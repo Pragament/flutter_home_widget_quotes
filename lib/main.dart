@@ -1,13 +1,26 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/dash_with_sign.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/quote_home_page.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'helper/native_bridge.dart';
+import 'models/quote_model.dart';
 
 Future<void> main() async {
+
+  // Hive Database
+  await Hive.initFlutter();
+  Hive.registerAdapter(QuoteModelAdapter());
+  await Hive.openBox<QuoteModel>('quotesBox');
+  await SharedPreferences.getInstance();
+  NativeBridge.registerMethods();
+
   WidgetsFlutterBinding.ensureInitialized();
   // Set AppGroup Id. This is needed for iOS Apps to talk to their WidgetExtensions
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
@@ -89,7 +102,8 @@ class MyApp extends StatelessWidget {
         theme: ThemeData.light(
           useMaterial3: false,
         ),
-        home: const MyHomePage(title: 'Flutter Demo Home Page'),
+        // home: const MyHomePage(title: 'Flutter Demo Home Page'),
+        home: const QuoteHomePage(title: 'Quotes'),
       ),
     );
   }

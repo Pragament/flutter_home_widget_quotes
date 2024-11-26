@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="200dp"
-    android:minHeight="100dp"
-    android:maxWidth="400dp"
-    android:maxHeight="400dp"
     android:updatePeriodMillis="400"
     android:initialLayout="@layout/quote_widget"
     android:configure="com.example.quoteapp.QuoteWidgetConfigureActivity"
     android:widgetCategory="home_screen"
     android:resizeMode="horizontal|vertical"
-    android:initialKeyguardLayout="@layout/quote_widget"></appwidget-provider>
+    android:initialKeyguardLayout="@layout/quote_widget" />
