@@ -67,11 +67,22 @@ class QuoteGlanceWidget : GlanceAppWidget() {
         val runnable = object : Runnable {
             override fun run() {
                 CoroutineScope(Dispatchers.IO).launch {
-                    val newQuote = fetchQuoteBasedOnPreference(context)
+                    val prefs = context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
+                    val prefs1 = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                    val order: String = prefs1.getString("flutter.order", "Random").toString()
+                    if (!prefs.contains("order_$glanceId")){
+                        prefs.edit().putString("order_$glanceId", order).apply()
+                        prefs.edit().putInt("index_$glanceId", 0).apply()
+                    }
+                    val order1: String = prefs.getString("order_$glanceId", "Random").toString()
+                    val index: Int = prefs.getInt("index_$glanceId", 0)
 
-                    val prefs =
-                        context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
+                    val newQuote = fetchQuoteBasedOnPreference(context,index,order1)
+
+//                    val prefs =
+//                        context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
                     prefs.edit().putString("quote", newQuote).apply()
+                    prefs.edit().putInt("index_$glanceId",index+1).apply()
 
                     // Update widget only if glanceId is still valid
                     glanceId?.let { validId ->
@@ -86,20 +97,20 @@ class QuoteGlanceWidget : GlanceAppWidget() {
         handler.post(runnable)
     }
 
-    private suspend fun fetchQuoteBasedOnPreference(context: Context): String {
+    private suspend fun fetchQuoteBasedOnPreference(context: Context,index:Int,order: String): String {
         return withContext(Dispatchers.IO) {
             val isApiEnabled = SettingsHelper.isApiQuotesEnabled(context)
 //            Log.d("Message", "The Api values is : ${isApiEnabled}")
             return@withContext if (isApiEnabled) {
 //                fetchQuoteFromFlutter(context)
-                fetchQuoteFromAPI()
+                fetchQuoteFromAPI(index,order)
             } else {
                 fetchQuoteFromFlutter(context)
             }
         }
     }
 
-    private fun fetchQuoteFromAPI(): String {
+    private fun fetchQuoteFromAPI(index: Int,order:String): String {
         return try {
             val url = URL("https://staticapis.pragament.com/daily/quotes-en-gratitude.json")
             val connection = url.openConnection() as HttpURLConnection
@@ -109,9 +120,24 @@ class QuoteGlanceWidget : GlanceAppWidget() {
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val quotesArray = JSONObject(response).getJSONArray("quotes")
-                val randomIndex = (0 until quotesArray.length()).random()
-                val quoteObject = quotesArray.getJSONObject(randomIndex)
-                quoteObject.getString("quote")
+                //val randomIndex = (0 until quotesArray.length()).random()
+                val randomIndex = index % quotesArray.length()
+                Log.d("index",randomIndex.toString())
+                val quotesList = mutableListOf<String>()
+                for (i in 0 until quotesArray.length()) {
+                    val quoteObject = quotesArray.getJSONObject(i)
+                    quotesList.add(quoteObject.getString("quote"))
+                }
+
+                // Sort the list based on the order
+                val sortedQuotes = when (order) {
+                    "Ascending" -> quotesList.sorted()
+                    "Descending" -> quotesList.sortedDescending()
+                    else -> quotesList.shuffled() // Default to random order
+                }
+//                val quoteObject = quotesArray.getJSONObject(randomIndex)
+//                quoteObject.getString("quote")
+                sortedQuotes[randomIndex]
             } else {
                 "Error fetching quote from API."
             }
@@ -193,12 +219,7 @@ class QuoteGlanceWidget : GlanceAppWidget() {
             prefs.edit().putString("fontSize_$glanceId", fontSize).apply()
         }
         val fontSize1: String = prefs.getString("fontSize_$glanceId", "25").toString()
-        val floatValue: Float = fontSize1.toFloat()
-       // val myString: String = fontSize.toString()
-        Log.d("font1", fontSize1);
         Log.d("key", "fontSize_$glanceId");
-//        val myString1: String =prefs1.getString("flutter.size", "small").toString()
-//        Log.d("abc",myString1)
 
         Box(
             modifier = GlanceModifier
@@ -213,7 +234,7 @@ class QuoteGlanceWidget : GlanceAppWidget() {
                 Spacer(GlanceModifier.size(10.dp))
                 Text(
                     text = quote ?: "Loading...",
-                    style = TextStyle(fontSize = floatValue.sp,textAlign = TextAlign.Center, fontStyle = FontStyle.Italic),
+                    style = TextStyle(fontSize = fontSize1.toFloat().sp,textAlign = TextAlign.Center, fontStyle = FontStyle.Italic),
                 )
                 Spacer(GlanceModifier.size(15.dp))
                 Row(
@@ -240,28 +261,34 @@ class QuoteGlanceWidget : GlanceAppWidget() {
 
 class FetchQuoteAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        val newQuote = fetchQuoteFromAPI()
+        val prefs = context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
+        val prefs1 = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val order1: String = prefs.getString("order_$glanceId", "Random").toString()
+        val index: Int = prefs.getInt("index_$glanceId", 0)
+        val newQuote = fetchQuoteBasedOnPreference(context,index,order1)
+
 //        Log.d("Fe", "Quotes Fetched")
         // Save the new quote in SharedPreferences
-        val prefs = context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
+//        val prefs = context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
         prefs.edit().putString("quote", newQuote).apply()
+        prefs.edit().putInt("index_$glanceId",index+1).apply()
 
         // Trigger the widget update
         QuoteGlanceWidget().update(context, glanceId)
     }
 
-    private suspend fun fetchQuoteBasedOnPreference(context: Context): String {
+    private suspend fun fetchQuoteBasedOnPreference(context: Context,index: Int,order: String): String {
         return withContext(Dispatchers.IO) {
             val isApiEnabled = SettingsHelper.isApiQuotesEnabled(context)
             Log.d("Message", "The Api values is : ${isApiEnabled}")
             return@withContext if (isApiEnabled) {
-                fetchQuoteFromAPI()
+                fetchQuoteFromAPI(index,order)
             } else {
                 fetchQuoteFromFlutter(context)
             }
         }
     }
-    private suspend fun fetchQuoteFromAPI(): String = withContext(Dispatchers.IO) {
+    private suspend fun fetchQuoteFromAPI(index: Int,order: String): String = withContext(Dispatchers.IO) {
         try {
             val url = URL("https://staticapis.pragament.com/daily/quotes-en-gratitude.json")
             val connection = url.openConnection() as HttpURLConnection
@@ -271,9 +298,25 @@ class FetchQuoteAction : ActionCallback {
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val quotesArray = JSONObject(response).getJSONArray("quotes")
-                val randomIndex = (0 until quotesArray.length()).random()
-                val quoteObject = quotesArray.getJSONObject(randomIndex)
-                return@withContext quoteObject.getString("quote")
+                //val randomIndex = (0 until quotesArray.length()).random()
+                val randomIndex = index % quotesArray.length()
+                Log.d("index",randomIndex.toString())
+                val quotesList = mutableListOf<String>()
+                for (i in 0 until quotesArray.length()) {
+                    val quoteObject = quotesArray.getJSONObject(i)
+                    quotesList.add(quoteObject.getString("quote"))
+                }
+
+                // Sort the list based on the order
+                val sortedQuotes = when (order) {
+                    "Ascending" -> quotesList.sorted()
+                    "Descending" -> quotesList.sortedDescending()
+                    else -> quotesList.shuffled() // Default to random order
+                }
+//                val quoteObject = quotesArray.getJSONObject(randomIndex)
+//                Log.d("check","From action callback.")
+//                return@withContext quoteObject.getString("quote")
+                return@withContext sortedQuotes[randomIndex]
             } else {
                 return@withContext "Error fetching quote"
             }
@@ -322,5 +365,6 @@ class FetchQuoteAction : ActionCallback {
     }
 
 }
+
 
 

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import "package:flutter/material.dart";
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,6 +57,24 @@ Future<void> showForm(BuildContext context, String title) async {
                     ))
                         .toList(),
                   ),
+                  SizedBox(height: 10), // Reduced spacing here
+                  Text(
+                    'Display Order',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  FormBuilderDropdown(
+                    name: 'order',
+                    decoration: InputDecoration(
+                      labelText: 'select the order to display',
+                      labelStyle: TextStyle(fontSize: 16),
+                    ),
+                    items: ['Random', 'Ascending','Descending']
+                        .map((val) => DropdownMenuItem(
+                      child: Text(val.toString()),
+                      value: val.toString(),
+                    ))
+                        .toList(),
+                  ),
                   SizedBox(height: 10),
                   RichText(text: TextSpan(
                     style: TextStyle(color: Colors.black),
@@ -72,6 +92,7 @@ Future<void> showForm(BuildContext context, String title) async {
                           await _prefs.setString(
                               "fontSize",
                               _formKey.currentState!.fields["fontSize"]!.value.toString());
+                          await _prefs.setString("order", _formKey.currentState!.fields["order"]!.value.toString());
                           Navigator.pop(context);
                           await _requestToPinWidget(_formKey.currentState!.fields["size"]!.value);
                         }
