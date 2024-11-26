@@ -46,10 +46,13 @@ class QuoteHomePage extends StatefulWidget {
 }
 
 class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserver {
+  late Box<QuoteModel> quoteBox;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    quoteBox = Hive.box<QuoteModel>('quotesBox');
 
     // Trigger data fetch only after the first frame is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,7 +87,6 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

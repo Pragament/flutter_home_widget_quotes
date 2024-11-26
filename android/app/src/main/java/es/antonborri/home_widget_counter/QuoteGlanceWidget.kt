@@ -255,7 +255,6 @@ class QuoteGlanceWidget : GlanceAppWidget() {
             }
         }
     }
-
 }
 
 
@@ -366,5 +365,6 @@ class FetchQuoteAction : ActionCallback {
 
 }
 
+}
 
 
