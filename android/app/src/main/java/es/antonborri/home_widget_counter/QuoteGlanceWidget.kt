@@ -82,7 +82,7 @@ class QuoteGlanceWidget : GlanceAppWidget() {
 //                    val prefs =
 //                        context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
                     prefs.edit().putString("quote", newQuote).apply()
-                    prefs.edit().putInt("index_$glanceId",index+1).apply()
+                    prefs.edit().putInt("index_$glanceId",(index+1)%Int.MAX_VALUE).apply()
 
                     // Update widget only if glanceId is still valid
                     glanceId?.let { validId ->
@@ -105,7 +105,7 @@ class QuoteGlanceWidget : GlanceAppWidget() {
 //                fetchQuoteFromFlutter(context)
                 fetchQuoteFromAPI(index,order)
             } else {
-                fetchQuoteFromFlutter(context)
+                fetchQuoteFromFlutter(context,index,order)
             }
         }
     }
@@ -146,7 +146,7 @@ class QuoteGlanceWidget : GlanceAppWidget() {
         }
     }
 
-    private fun fetchQuoteFromFlutter(context: Context): String {
+    private fun fetchQuoteFromFlutter(context: Context,index: Int,order: String): String {
         var quote = "Error fetching quote"
         val handler = Handler(Looper.getMainLooper())
 
@@ -158,8 +158,9 @@ class QuoteGlanceWidget : GlanceAppWidget() {
                 }
                 val methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "quote_channel")
 //                Log.d("fetchQuoteFromFlutter", "MethodChannel initialized")
+                val arguments = mapOf("index" to index, "order" to order)
 
-                methodChannel.invokeMethod("getQuoteFromHive", null, object : MethodChannel.Result {
+                methodChannel.invokeMethod("getQuoteFromHive", arguments, object : MethodChannel.Result {
                     override fun success(result: Any?) {
                         quote = result as? String ?: "No quotes found."
                         Log.d("fetchQuoteFromFlutter", "Fetched quote: $quote")
@@ -270,7 +271,7 @@ class FetchQuoteAction : ActionCallback {
         // Save the new quote in SharedPreferences
 //        val prefs = context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
         prefs.edit().putString("quote", newQuote).apply()
-        prefs.edit().putInt("index_$glanceId",index+1).apply()
+        prefs.edit().putInt("index_$glanceId",(index+1)%Int.MAX_VALUE).apply()
 
         // Trigger the widget update
         QuoteGlanceWidget().update(context, glanceId)
@@ -283,7 +284,7 @@ class FetchQuoteAction : ActionCallback {
             return@withContext if (isApiEnabled) {
                 fetchQuoteFromAPI(index,order)
             } else {
-                fetchQuoteFromFlutter(context)
+                fetchQuoteFromFlutter(context,index,order)
             }
         }
     }
@@ -323,7 +324,7 @@ class FetchQuoteAction : ActionCallback {
             return@withContext "Error fetching quote"
         }
     }
-    private fun fetchQuoteFromFlutter(context: Context): String {
+    private fun fetchQuoteFromFlutter(context: Context,index: Int,order: String): String {
         var quote = "Error fetching quote"
         val handler = Handler(Looper.getMainLooper())
 
@@ -335,8 +336,9 @@ class FetchQuoteAction : ActionCallback {
                 }
                 val methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "quote_channel")
                 Log.d("fetchQuoteFromFlutter", "MethodChannel initialized")
+                val arguments = mapOf("index" to index, "order" to order)
 
-                methodChannel.invokeMethod("getQuoteFromHive", null, object : MethodChannel.Result {
+                methodChannel.invokeMethod("getQuoteFromHive", arguments, object : MethodChannel.Result {
                     override fun success(result: Any?) {
                         quote = result as? String ?: "No quotes found."
                         Log.d("fetchQuoteFromFlutter", "Fetched quote: $quote")
@@ -364,7 +366,3 @@ class FetchQuoteAction : ActionCallback {
     }
 
 }
-
-}
-
-
