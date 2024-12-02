@@ -188,6 +188,8 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
                 },
                 child: const Text('Pin Widget to Home Screen'),
               ),
+                const SizedBox(height: 15,),
+                const Expanded(child: CustomQuotes())
             ],
           ),
         ),
