@@ -1,38 +1,35 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'quote_model.dart';
+part of 'tag_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class QuoteModelAdapter extends TypeAdapter<QuoteModel> {
+class TagModelAdapter extends TypeAdapter<TagModel> {
   @override
-  final int typeId = 0;
+  final int typeId = 1;
 
   @override
-  QuoteModel read(BinaryReader reader) {
+  TagModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return QuoteModel(
+    return TagModel(
       id: fields[0] as String,
-      quote: fields[1] as String,
-      tags: (fields[2] as List).cast<TagModel>(),
+      name: fields[1] as String,
     );
   }
 
   @override
-  void write(BinaryWriter writer, QuoteModel obj) {
+  void write(BinaryWriter writer, TagModel obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(2)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.quote)
-      ..writeByte(2)
-      ..write(obj.tags);
+      ..write(obj.name);
   }
 
   @override
@@ -41,7 +38,7 @@ class QuoteModelAdapter extends TypeAdapter<QuoteModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is QuoteModelAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is TagModelAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/dash_with_sign.dart';
+import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
+import 'package:home_widget_counter/provider/tag_provider.dart';
 import 'package:home_widget_counter/quote_home_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +19,10 @@ Future<void> main() async {
   // Hive Database
   await Hive.initFlutter();
   Hive.registerAdapter(QuoteModelAdapter());
+  Hive.registerAdapter(TagModelAdapter());
   await Hive.openBox<QuoteModel>('quotesBox');
+  await Hive.openBox<TagModel>('tagsBox');
+
   await SharedPreferences.getInstance();
   NativeBridge.registerMethods();
 
@@ -95,7 +100,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => QuoteProvider())
+        ChangeNotifierProvider(create: (_) => QuoteProvider()),
+        ChangeNotifierProvider(create: (_) => TagProvider())
       ],
       child: MaterialApp(
         title: 'Flutter Demo',
@@ -146,7 +152,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   Future<void> _requestToPinWidget() async {
     final isRequestPinSupported =
-        await HomeWidget.isRequestPinWidgetSupported();
+    await HomeWidget.isRequestPinWidgetSupported();
     if (isRequestPinSupported == true) {
       await HomeWidget.requestPinWidget(
         androidName: 'CounterGlanceWidgetReceiver',
@@ -199,7 +205,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => QuoteHomePage(title: "Quotes")));
               },
               child: Text(
-                "Goto Next Page"
+                  "Goto Next Page"
               ),
             )
           ],

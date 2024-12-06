@@ -2,10 +2,15 @@ import 'dart:developer';
 
 import "package:flutter/material.dart";
 import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:home_widget_counter/helper/settings_helper.dart';
+import 'package:home_widget_counter/models/tag_model.dart';
+import 'package:home_widget_counter/widgets/dialogs/show_tag_search.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../home_widget.dart';
 
 Future<void> showForm(BuildContext context, String title) async {
+  List<TagModel> selectedTags = [];
+
   final _formKey = GlobalKey<FormBuilderState>();
   SharedPreferences _prefs = await SharedPreferences.getInstance();
   return showDialog(
@@ -77,18 +82,20 @@ Future<void> showForm(BuildContext context, String title) async {
                   ),
                   SizedBox(height: 10),
                   RichText(text: TextSpan(
-                    style: TextStyle(color: Colors.black),
-                    children: [
-                      TextSpan(text: "Note: ",style:TextStyle(fontWeight: FontWeight.bold)),
-                      TextSpan(text: "Using small size for font size above 20 may clip the content.")
-                    ]
+                      style: TextStyle(color: Colors.black),
+                      children: [
+                        TextSpan(text: "Note: ",style:TextStyle(fontWeight: FontWeight.bold)),
+                        TextSpan(text: "Using small size for font size above 20 may clip the content.")
+                      ]
                   ),),
                   SizedBox(height: 20),
+                  ShowTagSearch(selectedTags: selectedTags,),
                   Center(
                     child: ElevatedButton(
                       onPressed: () async {
                         if (_formKey.currentState!.isValid) {
                           _formKey.currentState!.saveAndValidate();
+                          SettingsHelper.saveTags(selectedTags);
                           await _prefs.setString(
                               "fontSize",
                               _formKey.currentState!.fields["fontSize"]!.value.toString());
