@@ -90,7 +90,7 @@ class QuoteGlanceWidget : GlanceAppWidget() {
                     }
                 }
 
-                handler.postDelayed(this, 1*60*1000)  // Update every 1 minute
+                handler.postDelayed(this, 10*60*1000)  // Update every 1 minute
             }
         }
 
@@ -146,9 +146,15 @@ class QuoteGlanceWidget : GlanceAppWidget() {
         }
     }
 
-    private fun fetchQuoteFromFlutter(context: Context,index: Int,order: String): String {
+    private fun fetchQuoteFromFlutter(context: Context, index: Int, order: String): String {
         var quote = "Error fetching quote"
         val handler = Handler(Looper.getMainLooper())
+
+        val tagsWithContent = SettingsHelper.fetchTagsWithContent(context)
+        Log.d("Saved Tags", "Saved Tags: $tagsWithContent")
+        if (tagsWithContent.isEmpty()) {
+            return "No valid tags found"
+        }
 
         val latch = CountDownLatch(1) // To synchronize the main thread call
         handler.post {
@@ -157,18 +163,30 @@ class QuoteGlanceWidget : GlanceAppWidget() {
                     dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint.createDefault())
                 }
                 val methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "quote_channel")
-//                Log.d("fetchQuoteFromFlutter", "MethodChannel initialized")
-                val arguments = mapOf("index" to index, "order" to order)
+                val arguments = mapOf(
+                    "index" to index,
+                    "order" to order,
+                    "tags" to tagsWithContent.map { it.name } // Pass the tag names to Flutter
+                )
 
+                Log.d("fetchQuoteFromFlutter", "Sending arguments: $arguments")
                 methodChannel.invokeMethod("getQuoteFromHive", arguments, object : MethodChannel.Result {
                     override fun success(result: Any?) {
-                        quote = result as? String ?: "No quotes found."
-                        Log.d("fetchQuoteFromFlutter", "Fetched quote: $quote")
+                        val fetchedQuote = result as? String ?: "No quotes found."
+                        Log.d("fetchQuoteFromFlutter", "Fetched quote: $fetchedQuote")
+
+                        // Now filter quotes by matching tags
+                        if (tagsWithContent.any { tag -> fetchedQuote.contains(tag.name, ignoreCase = true) }) {
+                            quote = fetchedQuote
+                        } else {
+                            quote = "No quote matches the tags."
+                        }
                         latch.countDown() // Signal completion
                     }
 
                     override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
                         quote = "Error: $errorMessage"
+                        Log.e("fetchQuoteFromFlutter", "Error: $errorMessage")
                         latch.countDown() // Signal completion
                     }
 
@@ -186,7 +204,6 @@ class QuoteGlanceWidget : GlanceAppWidget() {
         latch.await() // Wait for the main thread to finish processing
         return quote
     }
-
 
 //    private fun fetchAutoQuote(): String {
 //        return try {
@@ -324,9 +341,15 @@ class FetchQuoteAction : ActionCallback {
             return@withContext "Error fetching quote"
         }
     }
-    private fun fetchQuoteFromFlutter(context: Context,index: Int,order: String): String {
+    private fun fetchQuoteFromFlutter(context: Context, index: Int, order: String): String {
         var quote = "Error fetching quote"
         val handler = Handler(Looper.getMainLooper())
+
+        val tagsWithContent = SettingsHelper.fetchTagsWithContent(context)
+        Log.d("Saved Tags", "Saved Tags: $tagsWithContent")
+        if (tagsWithContent.isEmpty()) {
+            return "No valid tags found"
+        }
 
         val latch = CountDownLatch(1) // To synchronize the main thread call
         handler.post {
@@ -335,18 +358,25 @@ class FetchQuoteAction : ActionCallback {
                     dartExecutor.executeDartEntrypoint(DartExecutor.DartEntrypoint.createDefault())
                 }
                 val methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "quote_channel")
-                Log.d("fetchQuoteFromFlutter", "MethodChannel initialized")
-                val arguments = mapOf("index" to index, "order" to order)
+                val arguments = mapOf(
+                    "index" to index,
+                    "order" to order,
+                    "tags" to tagsWithContent.map { it.name } // Pass the tag names to Flutter
+                )
 
+                Log.d("fetchQuoteFromFlutter", "Sending arguments: $arguments")
                 methodChannel.invokeMethod("getQuoteFromHive", arguments, object : MethodChannel.Result {
                     override fun success(result: Any?) {
-                        quote = result as? String ?: "No quotes found."
-                        Log.d("fetchQuoteFromFlutter", "Fetched quote: $quote")
+                        val fetchedQuote = result.toString()
+                        Log.d("fetchQuoteFromFlutter", "Fetched quote: $fetchedQuote")
+                        quote = fetchedQuote
                         latch.countDown() // Signal completion
                     }
 
+
                     override fun error(errorCode: String, errorMessage: String?, errorDetails: Any?) {
                         quote = "Error: $errorMessage"
+                        Log.e("fetchQuoteFromFlutter", "Error: $errorMessage")
                         latch.countDown() // Signal completion
                     }
 

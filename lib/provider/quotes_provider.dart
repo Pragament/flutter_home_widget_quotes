@@ -2,12 +2,11 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../helper/settings_helper.dart';
 import '../models/quote_model.dart';
-
+import '../models/tag_model.dart';
 
 class QuoteProvider with ChangeNotifier {
   static const String _apiUrl = 'https://staticapis.pragament.com/daily/quotes-en-gratitude.json';
@@ -31,19 +30,22 @@ class QuoteProvider with ChangeNotifier {
   }
 
   // Add a new quote to Hive and update the provider state
-  Future<void> addQuote(String quote) async {
+  Future<void> addQuote(String quote, List<TagModel> tags) async {
     final box = Hive.box<QuoteModel>('quotesBox');
     final newQuote = QuoteModel(
-      id: const Uuid().v4(), // Generate a unique ID
+      id: const Uuid().v4(),
       quote: quote,
+      tags: tags,
     );
     await box.add(newQuote);
+
+    // print("Quote saved with: ${newQuote.tags.length}");
     _customQuotes.add(newQuote);
     notifyListeners();
   }
 
   // Fetch quotes from the API or Hive
-  Future<void> fetchQuote() async {
+  Future<void> fetchQuote({List<String>? tags}) async {
     _isFetching = true;
     notifyListeners();
 
@@ -52,7 +54,7 @@ class QuoteProvider with ChangeNotifier {
       if (isApiEnabled) {
         await _fetchFromApi();
       } else {
-        await _fetchFromHive();
+        await _fetchFromHive(tags);
       }
     } finally {
       _isFetching = false;
@@ -76,17 +78,34 @@ class QuoteProvider with ChangeNotifier {
         _currentQuote = "Failed to fetch quote.";
       }
     } catch (e) {
-      _currentQuote = "Error: ${e.toString()}";
+      _currentQuote = "Error111 : ${e.toString()}";
+      print("Error ${e.toString()}");
     }
   }
 
-  // Fetch a random quote from the Hive database
-  Future<void> _fetchFromHive() async {
+  Future<void> _fetchFromHive(List<String>? selectedTags) async {
     try {
       final box = Hive.box<QuoteModel>('quotesBox');
+
       if (box.isNotEmpty) {
-        final randomIndex = Random().nextInt(box.length);
-        _currentQuote = box.getAt(randomIndex)?.quote ?? "No quotes found.";
+        // Fetch all quotes or filter by selected tags
+        final matchingQuotes = box.values.where((quote) {
+          if (selectedTags == null || selectedTags.isEmpty) {
+            // If no tags are provided, fetch all quotes
+            return true;
+          }
+
+          final quoteTags = quote.tags.map((tag) => tag.name).toSet();
+          return selectedTags.any(quoteTags.contains);
+        }).toList();
+
+        if (matchingQuotes.isNotEmpty) {
+          // Pick a random quote from the matching quotes
+          final randomIndex = Random().nextInt(matchingQuotes.length);
+          _currentQuote = matchingQuotes[randomIndex].quote;
+        } else {
+          _currentQuote = "No matching quotes found.";
+        }
       } else {
         _currentQuote = "No quotes found.";
       }
@@ -94,6 +113,50 @@ class QuoteProvider with ChangeNotifier {
       _currentQuote = "Error fetching local quotes: ${e.toString()}";
     }
   }
+
+  Future<String> fetchRandomQuote(List<String>? selectedTags) async {
+    await Future.delayed(
+      const Duration(milliseconds: 700),
+    );
+    try {
+      final box = Hive.box<QuoteModel>('quotesBox');
+
+      if (box.isNotEmpty) {
+        // Fetch all quotes or filter by selected tags
+        final matchingQuotes = box.values.where((quote) {
+          if (selectedTags == null || selectedTags.isEmpty) {
+            return true;
+          }
+
+          final quoteTags = quote.tags.map((tag) => tag.name).toSet();
+          return selectedTags.any((tag) => quoteTags.contains(tag));
+        }).toList();
+
+        if (matchingQuotes.isNotEmpty) {
+          // Pick a random quote from the matching quotes
+          final randomIndex = Random().nextInt(matchingQuotes.length);
+          return matchingQuotes[randomIndex].quote; // Assuming QuoteModel has a 'quote' field
+        } else {
+          return "No matching quotes found.";
+        }
+      } else {
+        return "No quotes found.";
+      }
+    } catch (e) {
+      return "Error fetching local quotes: ${e.toString()}";
+    }
+  }
+
+  // Add a tag to a specific quote
+  Future<void> addTagToQuote(String quoteId, TagModel tag) async {
+    final box = Hive.box<QuoteModel>('quotesBox');
+    final index = _customQuotes.indexWhere((quote) => quote.id == quoteId);
+    if (index != -1) {
+      final updatedQuote = _customQuotes[index];
+      updatedQuote.tags.add(tag);
+      await box.putAt(index, updatedQuote);
+      _customQuotes[index] = updatedQuote;
+      notifyListeners();
+    }
+  }
 }
-
-

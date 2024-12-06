@@ -41,6 +41,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -67,7 +68,29 @@ class QuoteWidget: FlutterActivity() {
 
 object SettingsHelper {
     private const val PREFS_NAME = "FlutterSharedPreferences" // Match Flutter's default name
-    private const val API_QUOTES_KEY = "flutter.apiQuotesEnabled" // Prefix with 'flutter.'
+    private const val API_QUOTES_KEY = "flutter.apiQuotesEnabled"
+    private const val TAGS_KEY = "flutter.savedTags" // Match the key in Flutter
+
+    fun fetchTagsWithContent(context: Context): List<TagModel> {
+        val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val tagsJsonString = sharedPreferences.getString(TAGS_KEY, "[]") ?: "[]"
+        val tagsList = mutableListOf<TagModel>()
+        Log.d("fetchTagsWithContent", "Tags JSON String: $tagsJsonString")
+        try {
+            val tagsJsonArray = JSONArray(tagsJsonString)
+            for (i in 0 until tagsJsonArray.length()) {
+                val jsonObject = tagsJsonArray.getJSONObject(i)
+                val tag = TagModel.fromJson(jsonObject)
+                if (tag.name.isNotEmpty()) { // Only add tags with non-empty names
+                    tagsList.add(tag)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return tagsList
+    }// Prefix with 'flutter.'
 
     fun isApiQuotesEnabled(context: Context): Boolean {
         val sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -80,3 +103,13 @@ object SettingsHelper {
     }
 }
 
+data class TagModel(val id: String, val name: String) {
+    companion object {
+        fun fromJson(jsonObject: JSONObject): TagModel {
+            return TagModel(
+                id = jsonObject.optString("id", ""),
+                name = jsonObject.optString("name", "")
+            )
+        }
+    }
+}

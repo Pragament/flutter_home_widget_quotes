@@ -90,4 +90,4 @@ class QuoteWidgetProvider : HomeWidgetProvider() {
         // Optionally show a Toast for debugging
         Toast.makeText(context, "Font size updated to: $newFontSize", Toast.LENGTH_SHORT).show()
     }
-    }
+}
