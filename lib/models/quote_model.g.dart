@@ -20,19 +20,22 @@ class QuoteModelAdapter extends TypeAdapter<QuoteModel> {
       id: fields[0] as String,
       quote: fields[1] as String,
       tags: (fields[2] as List).cast<TagModel>(),
+      description: fields[3] as String?, // Read nullable description
     );
   }
 
   @override
   void write(BinaryWriter writer, QuoteModel obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4) // Update to 4 fields
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.quote)
       ..writeByte(2)
-      ..write(obj.tags);
+      ..write(obj.tags)
+      ..writeByte(3)
+      ..write(obj.description); // Write nullable description
   }
 
   @override
@@ -41,7 +44,7 @@ class QuoteModelAdapter extends TypeAdapter<QuoteModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is QuoteModelAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is QuoteModelAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

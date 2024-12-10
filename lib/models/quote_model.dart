@@ -14,23 +14,28 @@ class QuoteModel {
   @HiveField(2)
   List<TagModel> tags;
 
+  @HiveField(3)
+  String? description; // Nullable description field
+
   QuoteModel({
     required this.id,
     required this.quote,
     required this.tags,
+    this.description,
   });
 
   factory QuoteModel.fromMap(Map<String, dynamic> json) => QuoteModel(
-    id: json['id'],
-    quote: json['quote'],
-    tags: (json['tags'] as List)
-        .map((tag) => TagModel.fromMap(tag))
-        .toList(),
-  );
+        id: json['id'],
+        quote: json['quote'],
+        tags:
+            (json['tags'] as List).map((tag) => TagModel.fromMap(tag)).toList(),
+        description: json['description'], // Parse description
+      );
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'quote': quote,
-    'tags': tags.map((tag) => tag.toMap()).toList(),
-  };
+        'id': id,
+        'quote': quote,
+        'tags': tags.map((tag) => tag.toMap()).toList(),
+        if (description != null) 'description': description,
+      };
 }
