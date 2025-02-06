@@ -7,7 +7,7 @@ import '../provider/tag_provider.dart';
 class TagsSelectionDialog extends StatefulWidget {
   const TagsSelectionDialog({
     super.key,
-    required this.selectedTags
+    required this.selectedTags,
   });
 
   final List<TagModel> selectedTags;
@@ -44,8 +44,8 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
     setState(() {
       filteredTags = allTags
           .where((tag) => tag.name
-          .toLowerCase()
-          .contains(searchController.text.toLowerCase()))
+              .toLowerCase()
+              .contains(searchController.text.toLowerCase()))
           .toList();
     });
   }
@@ -59,9 +59,38 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
         selectedTags.removeWhere((t) => t.id == tag.id);
       }
     });
-
   }
 
+  /// Show delete confirmation dialog
+  Future<void> _confirmDeleteTag(TagModel tag) async {
+    final tagProvider = Provider.of<TagProvider>(context, listen: false);
+    bool? confirmDelete = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Delete"),
+        content: Text("Are you sure you want to delete '${tag.name}'?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false), // Cancel
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true), // Confirm delete
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmDelete == true) {
+      await tagProvider.removeTag(tag.id);
+      loadTags();
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,7 +148,8 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
                             ElevatedButton(
                               onPressed: () async {
                                 if (formKey.currentState?.validate() ?? false) {
-                                  await tagProvider.addTag(tagNameController.text);
+                                  await tagProvider
+                                      .addTag(tagNameController.text);
                                   loadTags();
                                   Navigator.of(context).pop();
                                 }
@@ -154,55 +184,52 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
             filteredTags.isEmpty
                 ? const Text('No tags exist.\nTap + icon to create a new tag.')
                 : SizedBox(
-              height: 250,
-              child: SingleChildScrollView(
-                child: Column(
-                  children: filteredTags.map((tag) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Material(
-                        elevation: 2,
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.grey[100],
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: CheckboxListTile(
-                                title: Text(
-                                  "# ${tag.name}",
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                                value: selectedTags
-                                    .map((e) => e.id)
-                                    .contains(tag.id),
-                                onChanged: (isSelected) => updateTags(tag, isSelected!),
+                    height: 250,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: filteredTags.map((tag) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Material(
+                              elevation: 2,
+                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.grey[100],
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: CheckboxListTile(
+                                      title: Text(
+                                        "# ${tag.name}",
+                                        style: const TextStyle(fontSize: 13),
+                                      ),
+                                      value: selectedTags
+                                          .map((e) => e.id)
+                                          .contains(tag.id),
+                                      onChanged: (isSelected) =>
+                                          updateTags(tag, isSelected!),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () => _confirmDeleteTag(
+                                        tag), // Ask before deleting
+                                  ),
+                                ],
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete,
-                                color: Colors.red,
-                              ),
-                              onPressed: () async {
-                                await tagProvider.removeTag(tag.id);
-                                loadTags();
-                                setState(() { });
-                              },
-                            )
-                          ],
-                        ),
+                          );
+                        }).toList(),
                       ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
+                    ),
+                  ),
           ],
         ),
         actions: [
           FilledButton(
-            onPressed: ()
-            {
+            onPressed: () {
               print("Count of selected tags: ${selectedTags.length}");
               Navigator.of(context).pop(selectedTags);
             },
