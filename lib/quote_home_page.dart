@@ -18,7 +18,6 @@ import 'helper/settings_helper.dart';
 import 'models/quote_model.dart';
 import 'package:path_provider/path_provider.dart';
 
-
 @pragma('vm:entry-point')
 Future<void> interactiveCallback(Uri? uri) async {
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
@@ -50,7 +49,8 @@ class QuoteHomePage extends StatefulWidget {
   State<QuoteHomePage> createState() => _QuoteHomePageState();
 }
 
-class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserver {
+class _QuoteHomePageState extends State<QuoteHomePage>
+    with WidgetsBindingObserver {
   late Box<QuoteModel> quoteBox;
   List<TagModel> tags = [];
   List<bool> selectedTags = [];
@@ -58,6 +58,7 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
   List<String> selectedTagNames = [];
   Timer? _wallpaperChangeTimer;
   bool isApiEnable = true;
+  bool isWallpaperEnabled = false;
 
   @override
   void initState() {
@@ -83,23 +84,29 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
   }
 
   Future<void> _initializeApiSettings() async {
-    isApiEnable = await SettingsHelper.isApiQuotesEnabled();
-    if (isApiEnable) {
-      _startWallpaperChangeTimer();
+    final isFirstLaunch = await SettingsHelper.isFirstLaunch();
+    if (isFirstLaunch) {
+      await SettingsHelper.setApiQuotesEnabled(
+          true); // Enable API by default on first launch
     }
+
+    isApiEnable = await SettingsHelper.isApiQuotesEnabled() ?? true;
+    isWallpaperEnabled = false; // Default to false
     setState(() {});
   }
+
   void _startWallpaperChangeTimer() {
     _wallpaperChangeTimer =
         Timer.periodic(const Duration(minutes: 1), (_) async {
-          if (isApiEnable) {
-            final quoteProvider =
+      if (isWallpaperEnabled) {
+        // Only change wallpaper if enabled
+        final quoteProvider =
             Provider.of<QuoteProvider>(context, listen: false);
-            await quoteProvider.fetchQuote();
-            final newQuote = quoteProvider.currentQuote;
-            await _setLiveWallpaper(newQuote);
-          }
-        });
+        await quoteProvider.fetchQuote();
+        final newQuote = quoteProvider.currentQuote;
+        await _setLiveWallpaper(newQuote);
+      }
+    });
   }
 
   Future<void> _setLiveWallpaper(String quote) async {
@@ -173,7 +180,7 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
 
     final picture = recorder.endRecording();
     final img =
-    await picture.toImage(screenWidth.toInt(), screenHeight.toInt());
+        await picture.toImage(screenWidth.toInt(), screenHeight.toInt());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     final buffer = byteData!.buffer.asUint8List();
 
@@ -182,7 +189,6 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
     await file.writeAsBytes(buffer);
     return file;
   }
-
 
   @override
   void dispose() {
@@ -196,9 +202,7 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
     final quoteBox = Hive.box<QuoteModel>('quotesBox');
     if (quoteBox.isEmpty) return null;
     final randomIndex = Random().nextInt(quoteBox.length);
-    return quoteBox
-        .getAt(randomIndex)
-        ?.quote;
+    return quoteBox.getAt(randomIndex)?.quote;
   }
 
   void loadTags() {
@@ -254,8 +258,8 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
   // }
 
   Future<void> _requestToPinWidget() async {
-    final isRequestPinSupported = await HomeWidget
-        .isRequestPinWidgetSupported();
+    final isRequestPinSupported =
+        await HomeWidget.isRequestPinWidgetSupported();
     // print(isRequestPinSupported);
     if (isRequestPinSupported == true) {
       await HomeWidget.requestPinWidget(
@@ -351,6 +355,7 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
         appBar: AppBar(
           title: Text(widget.title),
           actions: [
+            // API Toggle
             FutureBuilder<bool>(
               future: SettingsHelper.isApiQuotesEnabled(),
               builder: (context, snapshot) {
@@ -365,6 +370,24 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
                   inactiveThumbColor: Colors.red,
                 );
               },
+            ),
+
+            // Wallpaper Toggle
+            Switch(
+              value: isWallpaperEnabled,
+              onChanged: (value) {
+                setState(() {
+                  isWallpaperEnabled = value;
+                });
+
+                if (isWallpaperEnabled) {
+                  _startWallpaperChangeTimer();
+                } else {
+                  _wallpaperChangeTimer?.cancel();
+                }
+              },
+              activeColor: Colors.blue,
+              inactiveThumbColor: Colors.grey,
             ),
           ],
         ),
@@ -408,8 +431,8 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
                       } else {
                         // Simulate loading state for Hive quotes
                         return FutureBuilder<String?>(
-                          future: QuoteProvider().fetchRandomQuote(
-                              selectedTagNames),
+                          future: QuoteProvider()
+                              .fetchRandomQuote(selectedTagNames),
                           // Fetch quote from the function
                           builder: (context, localSnapshot) {
                             if (localSnapshot.connectionState ==
@@ -451,7 +474,9 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
                       }
                     },
                   ),
-                  const SizedBox(height: 30,),
+                  const SizedBox(
+                    height: 30,
+                  ),
                   ElevatedButton(
                     onPressed: _fetchAndDisplayQuote,
                     child: const Text('Fetch New Quote'),
@@ -463,38 +488,42 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
                     child: const Text('Pin Widget to Home Screen'),
                   ),
                   const SizedBox(height: 15),
-                  GestureDetector(
-                    onTap: () async {
-                      if (isApiEnable && quoteProvider.currentQuote.isNotEmpty) {
-                        await _setLiveWallpaper(quoteProvider.currentQuote);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            backgroundColor: Colors.green,
-                            content: Text('Wallpaper set successfully!'),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            backgroundColor: Colors.red,
-                            content:
-                            Text('Failed: Enable API or no quotes available'),
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Set Quote to Wallpaper'),
+                  ElevatedButton(
+                    onPressed: isWallpaperEnabled
+                        ? () async {
+                            if (quoteProvider.currentQuote.isNotEmpty) {
+                              await _setLiveWallpaper(
+                                  quoteProvider.currentQuote);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  backgroundColor: Colors.green,
+                                  content: Text('Wallpaper set successfully!'),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  backgroundColor: Colors.red,
+                                  content:
+                                      Text('No quote available for wallpaper'),
+                                ),
+                              );
+                            }
+                          }
+                        : null, // Disable button if wallpaper is off
+                    child: const Text('Set Quote as Wallpaper'),
                   ),
-                  const SizedBox(height: 15,),
-                  Expanded(child: CustomQuotes(
+                  const SizedBox(
+                    height: 15,
+                  ),
+                  Expanded(
+                      child: CustomQuotes(
                     selectedTagNames: selectedTagNames,
-                  )
-                  )
+                  ))
                 ],
               ),
             ),
           ),
         ));
   }
-
 }
