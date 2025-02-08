@@ -109,6 +109,120 @@ class _QuoteHomePageState extends State<QuoteHomePage>
     });
   }
 
+  Future<void> _showWallpaperSelectionDialog(BuildContext context) async {
+    final quoteProvider = Provider.of<QuoteProvider>(context, listen: false);
+    String selectedHomeScreenTag = '';
+    String selectedLockScreenTag = '';
+
+    await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select Tags for Wallpaper'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Select a tag for Home Screen Wallpaper'),
+                  DropdownButton<String>(
+                    value: selectedHomeScreenTag.isEmpty
+                        ? null
+                        : selectedHomeScreenTag,
+                    hint: const Text('Select a tag'),
+                    onChanged: (String? newTag) {
+                      setState(() {
+                        selectedHomeScreenTag = newTag!;
+                      });
+                    },
+                    items: tags.map((tag) {
+                      return DropdownMenuItem<String>(
+                        value: tag.name,
+                        child: Text(tag.name),
+                      );
+                    }).toList(),
+                  ),
+                  if (selectedHomeScreenTag.isNotEmpty)
+                    Text('Selected: $selectedHomeScreenTag',
+                        style: const TextStyle(color: Colors.blue)),
+                  const SizedBox(height: 10),
+                  const Text('Select a tag for Lock Screen Wallpaper'),
+                  DropdownButton<String>(
+                    value: selectedLockScreenTag.isEmpty
+                        ? null
+                        : selectedLockScreenTag,
+                    hint: const Text('Select a tag'),
+                    onChanged: (String? newTag) {
+                      setState(() {
+                        selectedLockScreenTag = newTag!;
+                      });
+                    },
+                    items: tags.map((tag) {
+                      return DropdownMenuItem<String>(
+                        value: tag.name,
+                        child: Text(tag.name),
+                      );
+                    }).toList(),
+                  ),
+                  if (selectedLockScreenTag.isNotEmpty)
+                    Text('Selected: $selectedLockScreenTag',
+                        style: const TextStyle(color: Colors.blue)),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(
+                        context); // Close the dialog without applying wallpapers
+                  },
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (selectedHomeScreenTag.isNotEmpty &&
+                        selectedLockScreenTag.isNotEmpty) {
+                      _applyWallpapers(
+                          selectedHomeScreenTag, selectedLockScreenTag);
+                      Navigator.pop(context);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text('Please select tags for both wallpapers.'),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Apply Wallpapers'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _applyWallpapers(
+      String homeScreenTag, String lockScreenTag) async {
+    final quoteProvider = Provider.of<QuoteProvider>(context, listen: false);
+
+    // Fetch quotes for home and lock screen
+    await quoteProvider.fetchQuote(tags: [homeScreenTag]);
+    final homeScreenQuote = quoteProvider.currentQuote;
+    await quoteProvider.fetchQuote(tags: [lockScreenTag]);
+    final lockScreenQuote = quoteProvider.currentQuote;
+
+    // Apply the live wallpaper for both home and lock screen
+    await _setLiveWallpaper(homeScreenQuote);
+    await _setLiveWallpaper(lockScreenQuote);
+
+    // Show a success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Wallpapers set successfully!')),
+    );
+  }
+
   Future<void> _setLiveWallpaper(String quote) async {
     try {
       List<String> words = quote.split(' ');
@@ -129,6 +243,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
         }
       });
 
+      // Apply wallpaper to the lock screen as well
       final imageFile = await _generateQuoteImage(quote);
       await WallpaperManager.setWallpaperFromFile(
         imageFile.path,
@@ -152,38 +267,32 @@ class _QuoteHomePageState extends State<QuoteHomePage>
       recorder,
       Rect.fromPoints(Offset.zero, Offset(screenWidth, screenHeight)),
     );
-
     canvas.drawRect(
       Rect.fromLTWH(0, 0, screenWidth, screenHeight),
       Paint()..color = Colors.white,
     );
-
     double fontSize = 40.0;
     final textStyle = TextStyle(
       fontSize: fontSize,
       fontStyle: FontStyle.italic,
       color: Colors.black,
     );
-
     final textSpan = TextSpan(text: quote, style: textStyle);
     final textPainter = TextPainter(
       text: textSpan,
       textDirection: TextDirection.ltr,
     );
-
     textPainter.layout(maxWidth: screenWidth * 0.8);
     final offset = Offset(
       (screenWidth - textPainter.width) / 2,
       (screenHeight - textPainter.height) / 2,
     );
     textPainter.paint(canvas, offset);
-
     final picture = recorder.endRecording();
     final img =
         await picture.toImage(screenWidth.toInt(), screenHeight.toInt());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     final buffer = byteData!.buffer.asUint8List();
-
     final directory = await getApplicationDocumentsDirectory();
     final file = File('${directory.path}/quote_image.png');
     await file.writeAsBytes(buffer);
@@ -382,9 +491,9 @@ class _QuoteHomePageState extends State<QuoteHomePage>
 
                 if (isWallpaperEnabled) {
                   _startWallpaperChangeTimer();
-                } else {
+                } /*else {
                   _wallpaperChangeTimer?.cancel();
-                }
+                }*/
               },
               activeColor: Colors.blue,
               inactiveThumbColor: Colors.grey,
@@ -452,7 +561,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                             if (localSnapshot.hasData) {
                               // Once data is available, show the quote
                               final randomQuote = localSnapshot
-                                  .data; // This will be the quote fetched from `fetchRandomQuote`
+                                  .data; // This will be the quote fetched from fetchRandomQuote
                               return Text(
                                 randomQuote ?? "No quote found.",
                                 // If no quote found, show a fallback message
@@ -491,7 +600,12 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                   ElevatedButton(
                     onPressed: isWallpaperEnabled
                         ? () async {
+                            // First, show the wallpaper selection dialog
+                            await _showWallpaperSelectionDialog(context);
+
+                            // Check if there is a valid quote available after tag selection
                             if (quoteProvider.currentQuote.isNotEmpty) {
+                              // Apply the live wallpaper based on the selected quote
                               await _setLiveWallpaper(
                                   quoteProvider.currentQuote);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -501,6 +615,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                                 ),
                               );
                             } else {
+                              // Show an error message if no quote is available
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   backgroundColor: Colors.red,
@@ -510,7 +625,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                               );
                             }
                           }
-                        : null, // Disable button if wallpaper is off
+                        : null, // Disable the button if wallpaper feature is off
                     child: const Text('Set Quote as Wallpaper'),
                   ),
                   const SizedBox(
