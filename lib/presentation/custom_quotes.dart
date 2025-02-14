@@ -78,7 +78,7 @@ class _CustomQuotesState extends State<CustomQuotes> {
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredQuotes = _allQuotes
-          .where((quote) => quote.quote.toLowerCase().contains(query))
+          .where((quote) => quote.quote.split('*').first.toLowerCase().contains(query))
           .toList();
     });
   }
@@ -445,7 +445,8 @@ class _CustomQuotesState extends State<CustomQuotes> {
                   if (updatedQuote.isNotEmpty) {
                     final updatedModel = QuoteModel(
                       id: quote.id,
-                      quote: '$updatedQuote*${attachment?.path}',
+                      quote:
+                          '$updatedQuote*${attachment?.path ?? quote.quote.split('*').lastOrNull}',
                       tags: selectedTags,
                       description: updatedDescription,
                     );
