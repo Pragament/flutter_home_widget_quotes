@@ -15,6 +15,14 @@ import 'package:provider/provider.dart';
 import 'helper/settings_helper.dart';
 import 'models/quote_model.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/material.dart';
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:csv/csv.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:open_file/open_file.dart';
 
 @pragma('vm:entry-point')
 Future<void> interactiveCallback(Uri? uri) async {
@@ -59,6 +67,20 @@ class _QuoteHomePageState extends State<QuoteHomePage>
   bool isWallpaperEnabled = false;
   String selectedHomeScreenTag = '';
   String selectedLockScreenTag = '';
+  List<Map<String, dynamic>> allQuotes = [
+    {
+      "id": 1,
+      "text": "Be yourself!",
+      "author": "Unknown",
+      "tags": ["Life"]
+    },
+    {
+      "id": 2,
+      "text": "Never give up!",
+      "author": "Winston Churchill",
+      "tags": ["Motivation"]
+    }
+  ];
 
   @override
   void initState() {
@@ -406,6 +428,148 @@ class _QuoteHomePageState extends State<QuoteHomePage>
     }
   }
 
+  Future<void> importQuotesFromCSV(BuildContext context) async {
+    try {
+      // Step 1: Pick CSV file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+
+      if (result == null || result.files.single.path == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No file selected!')),
+        );
+        return;
+      }
+
+      // Step 2: Read and parse CSV file
+      File file = File(result.files.single.path!);
+      final input = await file.readAsString();
+      List<List<dynamic>> csvData = const CsvToListConverter().convert(input);
+
+      // Step 3: Validate CSV Data
+      if (csvData.isEmpty || csvData[0].length < 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Invalid CSV format. Expected: "Quote, Author".')),
+        );
+        return;
+      }
+
+      List<Map<String, String>> importedQuotes = [];
+
+      for (int i = 1; i < csvData.length; i++) {
+        var row = csvData[i];
+        if (row.length >= 2) {
+          importedQuotes.add({
+            'quote': row[0].toString(),
+            'author': row[1].toString(),
+          });
+        }
+      }
+
+      // Step 4: Save quotes locally or update UI
+      await _updateQuotesWidget(importedQuotes);
+
+      // Step 5: Notify user of success
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Quotes imported successfully!')),
+      );
+    } catch (e) {
+      print("Error while importing CSV: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error importing CSV: $e')),
+      );
+    }
+  }
+
+// Update HomeWidget with imported quotes
+  Future<void> _updateQuotesWidget(List<Map<String, String>> quotes) async {
+    try {
+      // Store quotes data for HomeWidget
+      await HomeWidget.saveWidgetData('imported_quotes', jsonEncode(quotes));
+
+      // Trigger widget update
+      await HomeWidget.updateWidget(name: 'HomeWidgetProvider');
+    } catch (e) {
+      print("Error updating HomeWidget: $e");
+    }
+  }
+
+  Future<void> exportQuotesToCSV(
+      BuildContext context, List<Map<String, dynamic>> quotes) async {
+    try {
+      List<List<String>> csvData = [];
+
+      // Add headers
+      csvData.add(["ID", "Quote", "Author", "Tags"]);
+
+      // Add each quote from the list
+      for (var quote in quotes) {
+        csvData.add([
+          quote["id"].toString(),
+          quote["text"],
+          quote["author"],
+          (quote["tags"] as List<dynamic>)
+              .join(", ") // Assuming tags is a List<String>
+        ]);
+      }
+
+      // Convert list to CSV
+      String csv = const ListToCsvConverter().convert(csvData);
+
+      // Define file path
+      final path = "/storage/emulated/0/Download/quotes_export.csv";
+      final file = File(path);
+      await file.writeAsString(csv);
+
+      // Show the dialog box to let the user choose an action
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text("Export Options"),
+            content: const Text(
+                "Would you like to download the CSV or share it via WhatsApp?"),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(); // Close dialog
+                  await OpenFile.open(file.path); // Open CSV file
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('CSV saved to: ${file.path}')),
+                  );
+                },
+                child: const Text("Download"),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final xfile = XFile(file.path);
+                  final result = await Share.shareXFiles(
+                    [xfile],
+                    text: "Here is the CSV file of Quotes",
+                  );
+
+                  if (result.status == ShareResultStatus.success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Shared Successfully')),
+                    );
+                    await file.delete(); // Delete file after sharing
+                  }
+                  Navigator.of(context).pop(); // Close dialog
+                },
+                child: const Text("Share to WhatsApp"),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print("Error while exporting CSV: $e");
+    }
+  }
+
   Widget _buildTagsStrip(BuildContext context) {
     if (tags.isEmpty) {
       return const SizedBox(); // Return an empty widget if tags are not loaded
@@ -528,6 +692,53 @@ class _QuoteHomePageState extends State<QuoteHomePage>
               inactiveThumbColor: Colors.grey,
             ),
           ],
+        ),
+        // Adding Drawer
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              const DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                ),
+                child: Text(
+                  'Menu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+              ),
+              // Import CSV File option inside the Drawer
+              ListTile(
+                title: const Text('Import CSV File'),
+                trailing: IconButton(
+                  icon:
+                      const Icon(Icons.upload_file), // Updated icon for clarity
+                  onPressed: () async {
+                    // Call the import function and handle any further actions here
+                    await importQuotesFromCSV(context);
+                  },
+                ),
+                subtitle: const Text(
+                  'Select a CSV file in the supported format of Home Widget.',
+                  style: TextStyle(fontSize: 12.0, color: Colors.grey),
+                ),
+              ),
+
+              // Add other menu items if needed
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () {
+            // Ensure `allQuotes` exists in your widget
+            exportQuotesToCSV(context, allQuotes);
+          },
+          backgroundColor: Colors.green,
+          label: const Text("Share"),
+          icon: const Icon(Icons.share),
         ),
         body: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10),
