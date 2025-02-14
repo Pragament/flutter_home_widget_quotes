@@ -86,7 +86,7 @@ Future<void> _sendAndUpdate([int? value]) async {
     iOSName: 'CounterWidget',
     androidName: 'CounterWidgetProvider',
   );
-
+  
   if (Platform.isAndroid) {
     // Update Glance Provider
     await HomeWidget.updateWidget(androidName: 'CounterGlanceWidgetReceiver');
@@ -101,7 +101,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => QuoteProvider()),
-        ChangeNotifierProvider(create: (_) => TagProvider())
+        ChangeNotifierProvider(create: (_) => TagProvider()),
       ],
       child: MaterialApp(
         title: 'Flutter Demo',
@@ -202,12 +202,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             ),
             InkWell(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => QuoteHomePage(title: "Quotes")));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const QuoteHomePage(title: 'Quotes')));
               },
-              child: Text(
-                  "Goto Next Page"
+              child: const Text(
+                  'Goto Next Page',
               ),
-            )
+            ),
           ],
         ),
       ),

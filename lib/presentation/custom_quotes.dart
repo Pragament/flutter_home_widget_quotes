@@ -1,6 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+
 import '../models/quote_model.dart';
 import '../models/tag_model.dart';
 import '../provider/quotes_provider.dart';
@@ -23,6 +28,7 @@ class _CustomQuotesState extends State<CustomQuotes> {
   List<QuoteModel> _allQuotes = [];
   List<TagModel> tags = [];
   List<TagModel> selectedTags = [];
+  File? attachment;
 
   @override
   void initState() {
@@ -80,123 +86,391 @@ class _CustomQuotesState extends State<CustomQuotes> {
   void _showAddQuoteDialog() {
     final TextEditingController quoteController = TextEditingController();
     final TextEditingController descriptionController = TextEditingController();
+    Future pickImage(ImageSource source, Function setState) async {
+      try {
+        final image =
+            await ImagePicker().pickImage(source: source, imageQuality: 100);
+        if (image == null) return;
+        final fileName = image.path.split('/').last;
+        debugPrint(fileName);
+        Directory dir = await getApplicationSupportDirectory();
+        debugPrint('Original path: ${image.path}');
+        debugPrint('Support dir: ${dir.path}');
+        debugPrint('New file path: ${dir.path}/$fileName');
+        final newFile = File('${dir.path}/$fileName');
+        await image.saveTo(newFile.path);
+        setState(() {
+          attachment = newFile;
+        });
+      } catch (e) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+      if (!mounted) {
+        return;
+      }
+      Navigator.pop(context);
+    }
+
     selectedTags = [];
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Add a New Quote'),
-          content: SizedBox(
-            height: 250,
-            child: Column(
-              children: [
-                TextField(
-                  controller: quoteController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter your quote',
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('Add a New Quote'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            attachment != null
+                                ? ListTile(
+                                    leading:
+                                        const Icon(Icons.image_search_rounded),
+                                    title: const Text('View Image'),
+                                    onTap: () {
+                                      showModalBottomSheet(
+                                        isScrollControlled: true,
+                                        showDragHandle: true,
+                                        context: context,
+                                        builder: ((context) =>
+                                            FractionallySizedBox(
+                                              heightFactor: 0.8,
+                                              child: SingleChildScrollView(
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Image.file(
+                                                      attachment!,
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            )),
+                                      );
+                                    },
+                                  )
+                                : const SizedBox(),
+                            ListTile(
+                              leading: const Icon(Icons.camera_alt_rounded),
+                              title: const Text('Camera'),
+                              onTap: () {
+                                pickImage(ImageSource.camera, setState);
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.image),
+                              title: const Text('Gallery'),
+                              onTap: () {
+                                pickImage(ImageSource.gallery, setState);
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            width: 0.5,
+                            color: Colors.black.withOpacity(0.65),
+                          ),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Center(
+                          child: attachment == null
+                              ? Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 50,
+                                    horizontal: 10,
+                                  ),
+                                  child: Text(
+                                    'Add Sticker/GIF',
+                                    style: TextStyle(
+                                      color: Colors.black.withOpacity(0.55),
+                                    ),
+                                  ),
+                                )
+                              : Image.file(
+                                  attachment!,
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter a description',
+                  TextField(
+                    controller: quoteController,
+                    enableInteractiveSelection: true,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter your quote',
+                    ),
                   ),
-                ),
-                ShowTagSearch(selectedTags: selectedTags),
-              ],
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter a description',
+                    ),
+                  ),
+                  ShowTagSearch(selectedTags: selectedTags),
+                ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final quote = quoteController.text.trim();
-                final description = descriptionController.text.trim();
-                if (quote.isNotEmpty) {
-                  _addQuote(quote, description);
+            actions: [
+              TextButton(
+                onPressed: () {
+                  attachment = null;
                   Navigator.of(context).pop();
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
+                },
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final quote = quoteController.text.trim();
+                  final description = descriptionController.text.trim();
+                  if (quote.isNotEmpty) {
+                    _addQuote(quote, description, attachment!.path);
+                    setState(
+                      () {
+                        attachment = null;
+                      },
+                    );
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  Future<void> _addQuote(String quote, String description) async {
+  Future<void> _addQuote(
+    String quote,
+    String description,
+    String attachmentPath,
+  ) async {
     final quoteProvider = Provider.of<QuoteProvider>(context, listen: false);
-    await quoteProvider.addQuote(quote, selectedTags, description);
+    await quoteProvider.addQuote(
+      '$quote*$attachmentPath',
+      selectedTags,
+      description,
+    );
     _loadQuotes(widget.selectedTagNames);
   }
 
   void _showEditDialog(
-      BuildContext context, Box<QuoteModel> box, int index, QuoteModel quote) {
+    BuildContext context,
+    Box<QuoteModel> box,
+    int index,
+    QuoteModel quote,
+  ) {
     final TextEditingController quoteController =
-        TextEditingController(text: quote.quote);
+        TextEditingController(text: quote.quote.split('*').first);
     final TextEditingController descriptionController =
         TextEditingController(text: quote.description ?? '');
     List<TagModel> selectedTags = List.from(quote.tags);
+    Future pickImage(ImageSource source, Function setState) async {
+      try {
+        final image = await ImagePicker().pickImage(source: source);
+        if (image == null) return;
+        final fileName = image.path.split('/').last;
+        debugPrint('file name $fileName');
+        Directory dir = await getApplicationSupportDirectory();
+        debugPrint('dir $dir');
+        final newFile = File('${dir.path}/$fileName');
+
+        await image.saveTo(newFile.path);
+        setState(() {
+          attachment = newFile;
+        });
+      } catch (e) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+      if (!mounted) {
+        return;
+      }
+      Navigator.pop(context);
+    }
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Edit Quote'),
-          content: SizedBox(
-            height: 250,
-            child: Column(
-              children: [
-                TextField(
-                  controller: quoteController,
-                  decoration: const InputDecoration(labelText: 'Quote'),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-                ShowTagSearch(selectedTags: selectedTags),
-              ],
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('Edit Quote'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            attachment != null ||
+                                    quote.quote.split('*').lastOrNull != null
+                                ? ListTile(
+                                    leading:
+                                        const Icon(Icons.image_search_rounded),
+                                    title: const Text('View Image'),
+                                    onTap: () {
+                                      showModalBottomSheet(
+                                        isScrollControlled: true,
+                                        showDragHandle: true,
+                                        context: context,
+                                        builder: ((context) =>
+                                            FractionallySizedBox(
+                                              heightFactor: 0.8,
+                                              child: SingleChildScrollView(
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Image.file(
+                                                      attachment ??
+                                                          File(
+                                                            quote.quote
+                                                                .split('*')
+                                                                .last,
+                                                          ),
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            )),
+                                      );
+                                    },
+                                  )
+                                : const SizedBox(),
+                            ListTile(
+                              leading: const Icon(Icons.camera_alt_rounded),
+                              title: const Text('Camera'),
+                              onTap: () {
+                                pickImage(ImageSource.camera, setState);
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.image),
+                              title: const Text('Gallery'),
+                              onTap: () {
+                                pickImage(ImageSource.gallery, setState);
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            width: 0.5,
+                            color: Colors.black.withOpacity(0.65),
+                          ),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Center(
+                          child: attachment != null ||
+                                  quote.quote.split('*').lastOrNull != null
+                              ? Image.file(
+                                  attachment ??
+                                      File(quote.quote.split('*').last),
+                                  fit: BoxFit.cover,
+                                )
+                              : Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 50,
+                                    horizontal: 10,
+                                  ),
+                                  child: Text(
+                                    'Add Sticker/GIF',
+                                    style: TextStyle(
+                                      color: Colors.black.withOpacity(0.55),
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  TextField(
+                    controller: quoteController,
+                    decoration: const InputDecoration(labelText: 'Quote'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                  ),
+                  ShowTagSearch(selectedTags: selectedTags),
+                ],
+              ),
             ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  attachment = null;
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final updatedQuote = quoteController.text.trim();
+                  final updatedDescription = descriptionController.text.trim();
+                  if (updatedQuote.isNotEmpty) {
+                    final updatedModel = QuoteModel(
+                      id: quote.id,
+                      quote: '$updatedQuote*${attachment?.path}',
+                      tags: selectedTags,
+                      description: updatedDescription,
+                    );
+                    await box.putAt(index, updatedModel);
+                    _loadQuotes(widget.selectedTagNames);
+                    setState(() {
+                      attachment = null;
+                    });
+                  }
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final updatedQuote = quoteController.text.trim();
-                final updatedDescription = descriptionController.text.trim();
-                if (updatedQuote.isNotEmpty) {
-                  final updatedModel = QuoteModel(
-                    id: quote.id,
-                    quote: updatedQuote,
-                    tags: selectedTags,
-                    description: updatedDescription,
-                  );
-                  await box.putAt(index, updatedModel);
-                  _loadQuotes(widget.selectedTagNames);
-                  setState(() {});
-                }
-                Navigator.of(context).pop();
-              },
-              child: const Text('Save'),
-            ),
-          ],
         );
       },
     );
   }
 
   void _showDeleteDialog(
-      BuildContext context, int boxIndex, Box<QuoteModel> quoteBox) {
+    BuildContext context,
+    int boxIndex,
+    Box<QuoteModel> quoteBox,
+  ) {
     showDialog(
       context: context,
       builder: (context) {
@@ -235,8 +509,8 @@ class _CustomQuotesState extends State<CustomQuotes> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: Center(
-            child: const Text(
+          title: const Center(
+            child: Text(
               'Description',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
@@ -301,8 +575,10 @@ class _CustomQuotesState extends State<CustomQuotes> {
               builder: (context, Box<QuoteModel> box, _) {
                 if (_filteredQuotes.isEmpty) {
                   return const Center(
-                    child: Text('No quotes found.',
-                        style: TextStyle(fontSize: 16)),
+                    child: Text(
+                      'No quotes found.',
+                      style: TextStyle(fontSize: 16),
+                    ),
                   );
                 }
                 return ListView.builder(
@@ -313,15 +589,22 @@ class _CustomQuotesState extends State<CustomQuotes> {
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 5),
+                        horizontal: 8,
+                        vertical: 5,
+                      ),
                       child: Material(
                         elevation: 2,
                         borderRadius: BorderRadius.circular(10),
                         child: ListTile(
+                          leading: quote.quote.split('*').lastOrNull != null
+                              ? Image.file(File(quote.quote.split('*').last))
+                              : null,
                           title: Text(
-                            quote.quote,
+                            quote.quote.split('*').first,
                             style: const TextStyle(
-                                fontSize: 16, fontStyle: FontStyle.italic),
+                              fontSize: 16,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -336,8 +619,8 @@ class _CustomQuotesState extends State<CustomQuotes> {
                                             quote.description!,
                                           );
                                         },
-                                        child: Text(
-                                          "View Description",
+                                        child: const Text(
+                                          'View Description',
                                           style: TextStyle(color: Colors.black),
                                         ),
                                       )
@@ -351,12 +634,19 @@ class _CustomQuotesState extends State<CustomQuotes> {
                                 icon:
                                     const Icon(Icons.delete, color: Colors.red),
                                 onPressed: () => _showDeleteDialog(
-                                    context, boxIndex, quoteBox),
+                                  context,
+                                  boxIndex,
+                                  quoteBox,
+                                ),
                               ),
                             ],
                           ),
                           onTap: () => _showEditDialog(
-                              context, quoteBox, boxIndex, quote),
+                            context,
+                            quoteBox,
+                            boxIndex,
+                            quote,
+                          ),
                         ),
                       ),
                     );

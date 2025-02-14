@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
@@ -17,7 +16,6 @@ import 'package:provider/provider.dart';
 import 'helper/settings_helper.dart';
 import 'models/quote_model.dart';
 import 'package:path_provider/path_provider.dart';
-
 
 @pragma('vm:entry-point')
 Future<void> interactiveCallback(Uri? uri) async {
@@ -50,7 +48,8 @@ class QuoteHomePage extends StatefulWidget {
   State<QuoteHomePage> createState() => _QuoteHomePageState();
 }
 
-class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserver {
+class _QuoteHomePageState extends State<QuoteHomePage>
+    with WidgetsBindingObserver {
   late Box<QuoteModel> quoteBox;
   List<TagModel> tags = [];
   List<bool> selectedTags = [];
@@ -89,17 +88,18 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
     }
     setState(() {});
   }
+
   void _startWallpaperChangeTimer() {
     _wallpaperChangeTimer =
         Timer.periodic(const Duration(minutes: 1), (_) async {
-          if (isApiEnable) {
-            final quoteProvider =
+      if (isApiEnable) {
+        final quoteProvider =
             Provider.of<QuoteProvider>(context, listen: false);
-            await quoteProvider.fetchQuote();
-            final newQuote = quoteProvider.currentQuote;
-            await _setLiveWallpaper(newQuote);
-          }
-        });
+        await quoteProvider.fetchQuote();
+        final newQuote = quoteProvider.currentQuote;
+        await _setLiveWallpaper(newQuote);
+      }
+    });
   }
 
   Future<void> _setLiveWallpaper(String quote) async {
@@ -173,7 +173,7 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
 
     final picture = recorder.endRecording();
     final img =
-    await picture.toImage(screenWidth.toInt(), screenHeight.toInt());
+        await picture.toImage(screenWidth.toInt(), screenHeight.toInt());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     final buffer = byteData!.buffer.asUint8List();
 
@@ -182,7 +182,6 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
     await file.writeAsBytes(buffer);
     return file;
   }
-
 
   @override
   void dispose() {
@@ -196,9 +195,7 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
     final quoteBox = Hive.box<QuoteModel>('quotesBox');
     if (quoteBox.isEmpty) return null;
     final randomIndex = Random().nextInt(quoteBox.length);
-    return quoteBox
-        .getAt(randomIndex)
-        ?.quote;
+    return quoteBox.getAt(randomIndex)?.quote;
   }
 
   void loadTags() {
@@ -235,7 +232,7 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
         .where((entry) => entry.value)
         .map((entry) => tags[entry.key].name)
         .toList();
-    print("Selected tag length: ${selectedTagNames.length}");
+    print('Selected tag length: ${selectedTagNames.length}');
     await provider.fetchQuote(tags: selectedTagNames);
 
     setState(() {});
@@ -254,8 +251,8 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
   // }
 
   Future<void> _requestToPinWidget() async {
-    final isRequestPinSupported = await HomeWidget
-        .isRequestPinWidgetSupported();
+    final isRequestPinSupported =
+        await HomeWidget.isRequestPinWidgetSupported();
     // print(isRequestPinSupported);
     if (isRequestPinSupported == true) {
       await HomeWidget.requestPinWidget(
@@ -291,9 +288,11 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
                   child: Row(
                     children: [
                       InkWell(
-                        child: Icon(allSelected
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank),
+                        child: Icon(
+                          allSelected
+                              ? Icons.check_box
+                              : Icons.check_box_outline_blank,
+                        ),
                         onTap: () {
                           toggleAllTags();
                         },
@@ -318,9 +317,11 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
                       child: Row(
                         children: [
                           InkWell(
-                            child: Icon(selectedTags[index]
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank),
+                            child: Icon(
+                              selectedTags[index]
+                                  ? Icons.check_box
+                                  : Icons.check_box_outline_blank,
+                            ),
                             onTap: () {
                               toggleTagSelection(index, !selectedTags[index]);
                             },
@@ -348,153 +349,168 @@ class _QuoteHomePageState extends State<QuoteHomePage> with WidgetsBindingObserv
     final quoteProvider = Provider.of<QuoteProvider>(context);
 
     return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-          actions: [
-            FutureBuilder<bool>(
-              future: SettingsHelper.isApiQuotesEnabled(),
-              builder: (context, snapshot) {
-                final isApiEnabled = snapshot.data ?? true;
-                return Switch(
-                  value: isApiEnabled,
-                  onChanged: (value) async {
-                    await SettingsHelper.setApiQuotesEnabled(value);
-                    setState(() {}); // Refresh UI
-                  },
-                  activeColor: Colors.green,
-                  inactiveThumbColor: Colors.red,
-                );
-              },
-            ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10),
-          child: SizedBox(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Row(
-                    children: [
-                      _buildTagsStrip(context),
-                    ],
-                  ),
-                  const Text(
-                    'Current Quote:',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  FutureBuilder<bool>(
-                    future: SettingsHelper.isApiQuotesEnabled(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const CircularProgressIndicator(); // Show progress while loading settings
-                      }
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          FutureBuilder<bool>(
+            future: SettingsHelper.isApiQuotesEnabled(),
+            builder: (context, snapshot) {
+              final isApiEnabled = snapshot.data ?? true;
+              return Switch(
+                value: isApiEnabled,
+                onChanged: (value) async {
+                  await SettingsHelper.setApiQuotesEnabled(value);
+                  setState(() {}); // Refresh UI
+                },
+                activeColor: Colors.green,
+                inactiveThumbColor: Colors.red,
+              );
+            },
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10),
+        child: SizedBox(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Row(
+                  children: [
+                    _buildTagsStrip(context),
+                  ],
+                ),
+                const Text(
+                  'Current Quote:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                FutureBuilder<bool>(
+                  future: SettingsHelper.isApiQuotesEnabled(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const CircularProgressIndicator(); // Show progress while loading settings
+                    }
 
-                      final isApiEnabled = snapshot.data ?? true;
+                    final isApiEnabled = snapshot.data ?? true;
 
-                      if (isApiEnabled) {
-                        if (quoteProvider.isFetching) {
-                          return const CircularProgressIndicator(); // Show progress while fetching from API
-                        } else {
-                          return Text(
-                            quoteProvider.currentQuote,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 20, fontStyle: FontStyle.italic),
-                          );
-                        }
+                    if (isApiEnabled) {
+                      if (quoteProvider.isFetching) {
+                        return const CircularProgressIndicator(); // Show progress while fetching from API
                       } else {
-                        // Simulate loading state for Hive quotes
-                        return FutureBuilder<String?>(
-                          future: QuoteProvider().fetchRandomQuote(
-                              selectedTagNames),
-                          // Fetch quote from the function
-                          builder: (context, localSnapshot) {
-                            if (localSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const CircularProgressIndicator(); // Show progress while loading the quote
-                            }
+                        return Text(
+                          quoteProvider.currentQuote,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        );
+                      }
+                    } else {
+                      // Simulate loading state for Hive quotes
+                      return FutureBuilder<String?>(
+                        future: QuoteProvider().fetchRandomQuote(
+                          selectedTagNames,
+                        ),
+                        // Fetch quote from the function
+                        builder: (context, localSnapshot) {
+                          if (localSnapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const CircularProgressIndicator(); // Show progress while loading the quote
+                          }
 
-                            if (localSnapshot.hasError) {
-                              return const Text(
-                                'Error fetching local quote',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    fontSize: 20, fontStyle: FontStyle.italic),
-                              );
-                            }
-
-                            if (localSnapshot.hasData) {
-                              // Once data is available, show the quote
-                              final randomQuote = localSnapshot
-                                  .data; // This will be the quote fetched from `fetchRandomQuote`
-                              return Text(
-                                randomQuote ?? "No quote found.",
-                                // If no quote found, show a fallback message
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    fontSize: 20, fontStyle: FontStyle.italic),
-                              );
-                            }
-
-                            // In case no data and no error, show fallback message
+                          if (localSnapshot.hasError) {
                             return const Text(
-                              'No quote found',
+                              'Error fetching local quote',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  fontSize: 20, fontStyle: FontStyle.italic),
+                                fontSize: 20,
+                                fontStyle: FontStyle.italic,
+                              ),
                             );
-                          },
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 30,),
-                  ElevatedButton(
-                    onPressed: _fetchAndDisplayQuote,
-                    child: const Text('Fetch New Quote'),
-                  ),
-                  GestureDetector(
-                    onTap: () async {
-                      await showForm(context, "Widget Configuration");
-                    },
-                    child: const Text('Pin Widget to Home Screen'),
-                  ),
-                  const SizedBox(height: 15),
-                  GestureDetector(
-                    onTap: () async {
-                      if (isApiEnable && quoteProvider.currentQuote.isNotEmpty) {
-                        await _setLiveWallpaper(quoteProvider.currentQuote);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            backgroundColor: Colors.green,
-                            content: Text('Wallpaper set successfully!'),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            backgroundColor: Colors.red,
-                            content:
-                            Text('Failed: Enable API or no quotes available'),
-                          ),
-                        );
-                      }
-                    },
-                    child: const Text('Set Quote to Wallpaper'),
-                  ),
-                  const SizedBox(height: 15,),
-                  Expanded(child: CustomQuotes(
+                          }
+
+                          if (localSnapshot.hasData) {
+                            // Once data is available, show the quote
+                            final randomQuote = localSnapshot
+                                .data; // This will be the quote fetched from `fetchRandomQuote`
+                            return Text(
+                              randomQuote?.split('*').first ??
+                                  'No quote found.',
+                              // If no quote found, show a fallback message
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            );
+                          }
+
+                          // In case no data and no error, show fallback message
+                          return const Text(
+                            'No quote found',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          );
+                        },
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(
+                  height: 30,
+                ),
+                ElevatedButton(
+                  onPressed: _fetchAndDisplayQuote,
+                  child: const Text('Fetch New Quote'),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    await showForm(context, 'Widget Configuration');
+                  },
+                  child: const Text('Pin Widget to Home Screen'),
+                ),
+                const SizedBox(height: 15),
+                GestureDetector(
+                  onTap: () async {
+                    if (isApiEnable && quoteProvider.currentQuote.isNotEmpty) {
+                      await _setLiveWallpaper(quoteProvider.currentQuote);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: Colors.green,
+                          content: Text('Wallpaper set successfully!'),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: Colors.red,
+                          content:
+                              Text('Failed: Enable API or no quotes available'),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Set Quote to Wallpaper'),
+                ),
+                const SizedBox(
+                  height: 15,
+                ),
+                Expanded(
+                  child: CustomQuotes(
                     selectedTagNames: selectedTagNames,
-                  )
-                  )
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
-
 }

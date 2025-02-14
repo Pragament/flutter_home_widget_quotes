@@ -7,7 +7,7 @@ import '../provider/tag_provider.dart';
 class TagsSelectionDialog extends StatefulWidget {
   const TagsSelectionDialog({
     super.key,
-    required this.selectedTags
+    required this.selectedTags,
   });
 
   final List<TagModel> selectedTags;
@@ -45,7 +45,7 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
       filteredTags = allTags
           .where((tag) => tag.name
           .toLowerCase()
-          .contains(searchController.text.toLowerCase()))
+          .contains(searchController.text.toLowerCase()),)
           .toList();
     });
   }
@@ -87,7 +87,7 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text(
-                      "Enter tag name",
+                      'Enter tag name',
                       textAlign: TextAlign.center,
                     ),
                     shape: const RoundedRectangleBorder(
@@ -134,7 +134,7 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
                 );
               },
               child: const Text(
-                "Create Tag +",
+                'Create Tag +',
                 style: TextStyle(fontSize: 15),
               ),
             ),
@@ -169,7 +169,7 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
                             Expanded(
                               child: CheckboxListTile(
                                 title: Text(
-                                  "# ${tag.name}",
+                                  '# ${tag.name}',
                                   style: const TextStyle(fontSize: 13),
                                 ),
                                 value: selectedTags
@@ -188,7 +188,7 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
                                 loadTags();
                                 setState(() { });
                               },
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -203,7 +203,7 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
           FilledButton(
             onPressed: ()
             {
-              print("Count of selected tags: ${selectedTags.length}");
+              print('Count of selected tags: ${selectedTags.length}');
               Navigator.of(context).pop(selectedTags);
             },
             child: const Text('Done'),

@@ -42,7 +42,7 @@ class SettingsHelper {
   static Future<void> saveTags(List<TagModel> tags) async {
     final prefs = await _getSharedPreferences();
     final String tagsJsonString = json.encode(tags.map((tag) => tag.toMap()).toList());
-    print("TAgs are: $tagsJsonString");
+    print('TAgs are: $tagsJsonString');
     await prefs.setString(tagsKey, tagsJsonString);
   }
 

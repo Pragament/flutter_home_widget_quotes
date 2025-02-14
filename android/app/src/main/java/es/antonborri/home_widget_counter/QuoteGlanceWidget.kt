@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.io.File
 import androidx.work.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -42,6 +43,14 @@ import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.CountDownLatch
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.glance.ImageProvider
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
+import androidx.glance.Image
+import androidx.glance.layout.Column
+import androidx.glance.GlanceModifier
 
 class QuoteGlanceWidget : GlanceAppWidget() {
     override val stateDefinition = HomeWidgetGlanceStateDefinition()
@@ -230,7 +239,9 @@ class QuoteGlanceWidget : GlanceAppWidget() {
     private fun GlanceContent(context: Context, currentState: HomeWidgetGlanceState) {
         val prefs = context.getSharedPreferences("home_widget_prefs", Context.MODE_PRIVATE)
         val prefs1 = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val quote = prefs.getString("quote", "Welcome to Gratitude Quotes")
+        val q = prefs.getString("quote", "Welcome to Gratitude Quotes")
+        val quote = q!!.split("*")?.first()
+        val attachmentPath = q!!.split("*")?.lastOrNull()
         val fontSize: String = prefs1.getString("flutter.fontSize", "25").toString()
         Log.d("font", fontSize);
         if (!prefs.contains("fontSize_$glanceId")){
@@ -238,6 +249,9 @@ class QuoteGlanceWidget : GlanceAppWidget() {
         }
         val fontSize1: String = prefs.getString("fontSize_$glanceId", "25").toString()
         Log.d("key", "fontSize_$glanceId");
+        
+        // Load bitmap outside composable
+        val bitmap = loadBitmap(attachmentPath)
 
         Box(
             modifier = GlanceModifier
@@ -249,6 +263,16 @@ class QuoteGlanceWidget : GlanceAppWidget() {
                 verticalAlignment = Alignment.Vertical.Top,
                 horizontalAlignment = Alignment.Horizontal.CenterHorizontally
             ) {
+                bitmap?.let {
+                    Image(
+                        provider = ImageProvider(it),
+                        contentDescription = null,
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .height(125.dp)
+                    )
+                    Spacer(modifier = GlanceModifier.height(8.dp))
+                }
                 Spacer(GlanceModifier.size(10.dp))
                 Text(
                     text = quote ?: "Loading...",
@@ -271,6 +295,33 @@ class QuoteGlanceWidget : GlanceAppWidget() {
                     }
                 }
             }
+        }
+    }
+
+    private fun loadBitmap(path: String?): Bitmap? {
+        Log.d("QuoteGlanceWidget", "Attempting to load image from path: $path")
+        if (path.isNullOrEmpty()) {
+            Log.d("QuoteGlanceWidget", "Path is null or empty")
+            return null
+        }
+        
+        return try {
+            val file = File(path)
+            if (!file.exists()) {
+                Log.e("QuoteGlanceWidget", "File does not exist at path: $path")
+                return null
+            }
+            
+            val bitmap = BitmapFactory.decodeFile(path)
+            if (bitmap == null) {
+                Log.e("QuoteGlanceWidget", "Failed to decode bitmap")
+            } else {
+                Log.d("QuoteGlanceWidget", "Bitmap loaded successfully: ${bitmap.width}x${bitmap.height}")
+            }
+            bitmap
+        } catch (e: Exception) {
+            Log.e("QuoteGlanceWidget", "Error loading image: ${e.message}")
+            null
         }
     }
 }

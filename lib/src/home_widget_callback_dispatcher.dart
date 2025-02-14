@@ -5,7 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 /// Dispatcher used for calling dart code from Native Code while in the background
-@pragma("vm:entry-point")
+@pragma('vm:entry-point')
 Future<void> callbackDispatcher() async {
   const backgroundChannel = MethodChannel('home_widget/background');
   WidgetsFlutterBinding.ensureInitialized();
