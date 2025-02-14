@@ -59,9 +59,38 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
         selectedTags.removeWhere((t) => t.id == tag.id);
       }
     });
-
   }
 
+  /// Show delete confirmation dialog
+  Future<void> _confirmDeleteTag(TagModel tag) async {
+    final tagProvider = Provider.of<TagProvider>(context, listen: false);
+    bool? confirmDelete = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Confirm Delete"),
+        content: Text("Are you sure you want to delete '${tag.name}'?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false), // Cancel
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true), // Confirm delete
+            child: const Text(
+              "Delete",
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmDelete == true) {
+      await tagProvider.removeTag(tag.id);
+      loadTags();
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,7 +148,8 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
                             ElevatedButton(
                               onPressed: () async {
                                 if (formKey.currentState?.validate() ?? false) {
-                                  await tagProvider.addTag(tagNameController.text);
+                                  await tagProvider
+                                      .addTag(tagNameController.text);
                                   loadTags();
                                   Navigator.of(context).pop();
                                 }

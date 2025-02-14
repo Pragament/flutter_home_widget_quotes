@@ -24,7 +24,6 @@ class QuoteProvider with ChangeNotifier {
     _loadCustomQuotes();
   }
 
-  /// Load all custom quotes from Hive into `_customQuotes`
   Future<void> _loadCustomQuotes() async {
     try {
       final box = Hive.box<QuoteModel>('quotesBox');
@@ -36,7 +35,6 @@ class QuoteProvider with ChangeNotifier {
     }
   }
 
-  /// Add a new quote to Hive and update the provider state
   Future<void> addQuote(
     String quote,
     List<TagModel> tags,
@@ -48,7 +46,7 @@ class QuoteProvider with ChangeNotifier {
         id: const Uuid().v4(),
         quote: quote,
         tags: tags,
-        description: description, // Pass description here
+        description: description,
       );
       await box.add(newQuote);
       _customQuotes.add(newQuote);
@@ -59,7 +57,6 @@ class QuoteProvider with ChangeNotifier {
     }
   }
 
-  /// Fetch a quote either from the API or Hive based on user settings
   Future<void> fetchQuote({List<String>? tags}) async {
     _isFetching = true;
     notifyListeners();
@@ -79,7 +76,6 @@ class QuoteProvider with ChangeNotifier {
     }
   }
 
-  /// Fetch quotes from the API
   Future<void> _fetchFromApi() async {
     try {
       final response = await http.get(Uri.parse(_apiUrl));
@@ -100,7 +96,6 @@ class QuoteProvider with ChangeNotifier {
     }
   }
 
-  /// Fetch a random quote from Hive based on optional tags
   Future<void> _fetchFromHive(List<String>? selectedTags) async {
     try {
       final box = Hive.box<QuoteModel>('quotesBox');
@@ -121,7 +116,6 @@ class QuoteProvider with ChangeNotifier {
     }
   }
 
-  /// Fetch a random quote for external use
   Future<String> fetchRandomQuote(List<String>? selectedTags) async {
     await Future.delayed(const Duration(milliseconds: 700));
     try {
@@ -140,9 +134,9 @@ class QuoteProvider with ChangeNotifier {
     } catch (e) {
       return 'Error fetching quotes: $e';
     }
+    return _currentQuote;
   }
 
-  /// Add a tag to a specific quote
   Future<void> addTagToQuote(String quoteId, TagModel tag) async {
     try {
       final box = Hive.box<QuoteModel>('quotesBox');
@@ -160,7 +154,6 @@ class QuoteProvider with ChangeNotifier {
     }
   }
 
-  /// Filter quotes by tags
   List<QuoteModel> _filterQuotesByTags(
     List<QuoteModel> quotes,
     List<String>? selectedTags,

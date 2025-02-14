@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
@@ -15,7 +14,6 @@ import 'helper/native_bridge.dart';
 import 'models/quote_model.dart';
 
 Future<void> main() async {
-
   // Hive Database
   await Hive.initFlutter();
   Hive.registerAdapter(QuoteModelAdapter());
@@ -152,7 +150,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   Future<void> _requestToPinWidget() async {
     final isRequestPinSupported =
-    await HomeWidget.isRequestPinWidgetSupported();
+        await HomeWidget.isRequestPinWidgetSupported();
     if (isRequestPinSupported == true) {
       await HomeWidget.requestPinWidget(
         androidName: 'CounterGlanceWidgetReceiver',
