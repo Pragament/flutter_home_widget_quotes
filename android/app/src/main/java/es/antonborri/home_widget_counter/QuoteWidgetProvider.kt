@@ -30,10 +30,26 @@ class QuoteWidgetProvider : HomeWidgetProvider() {
 
             val views = RemoteViews(context.packageName, R.layout.quote_widget).apply {
                 // Retrieve the saved quote from SharedPreferences
-                val quote =
+                val q =
                     widgetData.getString("quote", "Fetching quote...") ?: "Fetching quote..."
+                val quote = q.split("*").first()
+                val attachmentPath = q.split("*").lastOrNull()
+    
                 setTextViewText(R.id.text_quotes, quote)
                 // val fontSize: Float = widgetData.getFloat("flutter.fontSize", 20.0f)
+
+                if (!attachmentPath.isNullOrEmpty()) {
+                    try {
+                        val bitmap = android.graphics.BitmapFactory.decodeFile(attachmentPath)
+                        setImageViewBitmap(R.id.widget_image, bitmap)
+                        setViewVisibility(R.id.widget_image, android.view.View.VISIBLE)
+                    } catch (e: Exception) {
+                        Log.e("QuoteWidget", "Error loading image: ${e.message}")
+                        setViewVisibility(R.id.widget_image, android.view.View.GONE)
+                    }
+                } else {
+                    setViewVisibility(R.id.widget_image, android.view.View.GONE)
+                }
                 Log.d("tdg", "Came here");
                 val fontSize: String = widgetData.getString("flutter.fontSize", "25").toString()
                 val floatValue: Float = fontSize.toFloat()

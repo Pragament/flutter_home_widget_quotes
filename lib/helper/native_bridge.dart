@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import '../models/quote_model.dart';
@@ -8,7 +7,7 @@ class NativeBridge {
 
   static void registerMethods() {
     _channel.setMethodCallHandler((call) async {
-      if (call.method == "getQuoteFromHive") {
+      if (call.method == 'getQuoteFromHive') {
         final int index = call.arguments['index'];
         final String order = call.arguments['order'];
         final List<String> tags = List<String>.from(call.arguments['tags']); // Get the tags from Android
@@ -24,18 +23,18 @@ class NativeBridge {
       List<QuoteModel> quotesList = box.values.toList().cast<QuoteModel>();
 
       // Debug: Log all quotes and their tags
-      print("All Quotes in Hive:");
+      print('All Quotes in Hive:');
       for (var quote in quotesList) {
         print(
-          "Quote: ${quote.quote}, Tags: ${quote.tags.map((tag) => tag.name).toList()}",
+          'Quote: ${quote.quote}, Tags: ${quote.tags.map((tag) => tag.name).toList()}',
         );
       }
 
       // Sort quotes based on the provided order
       quotesList.sort((a, b) {
-        if (order.toLowerCase() == "ascending") {
+        if (order.toLowerCase() == 'ascending') {
           return a.quote.compareTo(b.quote);
-        } else if (order.toLowerCase() == "descending") {
+        } else if (order.toLowerCase() == 'descending') {
           return b.quote.compareTo(a.quote);
         } else {
           return 0; // Default: no sorting
@@ -47,8 +46,8 @@ class NativeBridge {
         for (String tag in tags) {
           // Compare input tag with `TagModel` name field
           if (quoteModel.tags.any((quoteTag) =>
-          quoteTag.name.trim().toLowerCase() == tag.trim().toLowerCase())) {
-            print("Matching Quote Found: ${quoteModel.quote} for Tag: $tag");
+          quoteTag.name.trim().toLowerCase() == tag.trim().toLowerCase(),)) {
+            print('Matching Quote Found: ${quoteModel.quote} for Tag: $tag');
             return true; // Match found, include this quote
           }
         }
@@ -56,7 +55,7 @@ class NativeBridge {
       }).toList();
 
       // Debug: Log filtered quotes
-      print("Total Matching Quotes for Tags $tags: ${filteredQuotes.length}");
+      print('Total Matching Quotes for Tags $tags: ${filteredQuotes.length}');
 
       // If there are filtered quotes, return the one at the specified index
       if (filteredQuotes.isNotEmpty) {
@@ -64,7 +63,7 @@ class NativeBridge {
         return filteredQuotes[randomIndex].quote;
       }
     }
-    return "No matching quote found.";
+    return 'No matching quote found.';
   }
 }
 

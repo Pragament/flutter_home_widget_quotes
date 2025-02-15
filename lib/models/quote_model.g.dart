@@ -20,14 +20,14 @@ class QuoteModelAdapter extends TypeAdapter<QuoteModel> {
       id: fields[0] as String,
       quote: fields[1] as String,
       tags: (fields[2] as List).cast<TagModel>(),
-      description: fields[3] as String?, // Read nullable description
+      description: fields[3] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, QuoteModel obj) {
     writer
-      ..writeByte(4) // Update to 4 fields
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -35,7 +35,7 @@ class QuoteModelAdapter extends TypeAdapter<QuoteModel> {
       ..writeByte(2)
       ..write(obj.tags)
       ..writeByte(3)
-      ..write(obj.description); // Write nullable description
+      ..write(obj.description);
   }
 
   @override

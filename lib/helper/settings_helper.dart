@@ -56,6 +56,7 @@ class SettingsHelper {
     final prefs = await _getSharedPreferences();
     final String tagsJsonString =
         json.encode(tags.map((tag) => tag.toMap()).toList());
+    print('Tags are: $tagsJsonString');
     await prefs.setString(tagsKey, tagsJsonString);
   }
 }

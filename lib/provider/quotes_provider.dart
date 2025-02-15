@@ -12,7 +12,7 @@ class QuoteProvider with ChangeNotifier {
   static const String _apiUrl =
       'https://staticapis.pragament.com/daily/quotes-en-gratitude.json';
 
-  String _currentQuote = "Fetching...";
+  String _currentQuote = 'Fetching...';
   bool _isFetching = false;
   List<QuoteModel> _customQuotes = [];
 
@@ -29,14 +29,17 @@ class QuoteProvider with ChangeNotifier {
       final box = Hive.box<QuoteModel>('quotesBox');
       _customQuotes = box.values.toList();
     } catch (e) {
-      debugPrint("Error loading quotes from Hive: $e");
+      debugPrint('Error loading quotes from Hive: $e');
     } finally {
       notifyListeners();
     }
   }
 
   Future<void> addQuote(
-      String quote, List<TagModel> tags, String description) async {
+    String quote,
+    List<TagModel> tags,
+    String description,
+  ) async {
     try {
       final box = Hive.box<QuoteModel>('quotesBox');
       final newQuote = QuoteModel(
@@ -48,7 +51,7 @@ class QuoteProvider with ChangeNotifier {
       await box.add(newQuote);
       _customQuotes.add(newQuote);
     } catch (e) {
-      debugPrint("Error adding new quote: $e");
+      debugPrint('Error adding new quote: $e');
     } finally {
       notifyListeners();
     }
@@ -66,7 +69,7 @@ class QuoteProvider with ChangeNotifier {
         await _fetchFromHive(tags);
       }
     } catch (e) {
-      debugPrint("Error fetching quote: ${e.toString()}");
+      _currentQuote = 'Error fetching quote: ${e.toString()}';
     } finally {
       _isFetching = false;
       notifyListeners();
@@ -81,10 +84,15 @@ class QuoteProvider with ChangeNotifier {
         final quotes = data['quotes'] as List<dynamic>;
         if (quotes.isNotEmpty) {
           _currentQuote = quotes[Random().nextInt(quotes.length)]['quote'];
+        } else {
+          _currentQuote = 'No quotes available.';
         }
+      } else {
+        _currentQuote =
+            'Failed to fetch quotes from API. Status code: ${response.statusCode}';
       }
     } catch (e) {
-      debugPrint("Error fetching quotes from API: $e");
+      _currentQuote = 'Error fetching quotes from API: $e';
     }
   }
 
@@ -97,10 +105,14 @@ class QuoteProvider with ChangeNotifier {
         if (matchingQuotes.isNotEmpty) {
           _currentQuote =
               matchingQuotes[Random().nextInt(matchingQuotes.length)].quote;
+        } else {
+          _currentQuote = 'No matching quotes found.';
         }
+      } else {
+        _currentQuote = 'No quotes found in the local database.';
       }
     } catch (e) {
-      debugPrint("Error fetching quotes from Hive: $e");
+      _currentQuote = 'Error fetching quotes from Hive: $e';
     }
   }
 
@@ -113,10 +125,14 @@ class QuoteProvider with ChangeNotifier {
             _filterQuotesByTags(box.values.toList(), selectedTags);
         if (matchingQuotes.isNotEmpty) {
           return matchingQuotes[Random().nextInt(matchingQuotes.length)].quote;
+        } else {
+          return 'No matching quotes found.';
         }
+      } else {
+        return 'No quotes found in the local database.';
       }
     } catch (e) {
-      debugPrint("Error fetching quotes: $e");
+      return 'Error fetching quotes: $e';
     }
     return _currentQuote;
   }
@@ -132,14 +148,16 @@ class QuoteProvider with ChangeNotifier {
         _customQuotes[index] = updatedQuote;
       }
     } catch (e) {
-      debugPrint("Error adding tag to quote: $e");
+      debugPrint('Error adding tag to quote: $e');
     } finally {
       notifyListeners();
     }
   }
 
   List<QuoteModel> _filterQuotesByTags(
-      List<QuoteModel> quotes, List<String>? selectedTags) {
+    List<QuoteModel> quotes,
+    List<String>? selectedTags,
+  ) {
     if (selectedTags == null || selectedTags.isEmpty) {
       return quotes;
     }

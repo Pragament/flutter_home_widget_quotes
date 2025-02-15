@@ -25,7 +25,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "es.antonborri.home_widget_counter"
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdkVersion 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {

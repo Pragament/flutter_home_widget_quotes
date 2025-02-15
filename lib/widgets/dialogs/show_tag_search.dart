@@ -1,5 +1,4 @@
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/tag_model.dart';
@@ -34,7 +33,7 @@ class _ShowTagSearchState extends State<ShowTagSearch> {
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: Icon(Icons.tag,
-                  color: Theme.of(context).colorScheme.primary, size: 22),
+                  color: Theme.of(context).colorScheme.primary, size: 22,),
             ),
             selectedTags.isEmpty
                 ? Expanded(
@@ -53,7 +52,7 @@ class _ShowTagSearchState extends State<ShowTagSearch> {
                     ),
                   );
                   if(selectedTags.length != n) {
-                    print("Length: ${selectedTags.length}");
+                    print('Length: ${selectedTags.length}');
                     setState(() {});
                   }
                 },
@@ -77,9 +76,9 @@ class _ShowTagSearchState extends State<ShowTagSearch> {
                             label: Text('# ${tag.name}'),
                             shape: RoundedRectangleBorder(
                                 side: const BorderSide(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(20)),
+                                borderRadius: BorderRadius.circular(20),),
                             onSelected: (selected) =>
-                                setState(() => selectedTags.remove(tag)
+                                setState(() => selectedTags.remove(tag),
                                 ),
                           ),
                         ),
@@ -100,7 +99,7 @@ class _ShowTagSearchState extends State<ShowTagSearch> {
                 );
                 setState(() {});
               },
-              icon: Icon(Icons.add),
+              icon: const Icon(Icons.add),
             ),
           ],
         ),

@@ -44,8 +44,8 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
     setState(() {
       filteredTags = allTags
           .where((tag) => tag.name
-              .toLowerCase()
-              .contains(searchController.text.toLowerCase()))
+          .toLowerCase()
+          .contains(searchController.text.toLowerCase()),)
           .toList();
     });
   }
@@ -116,7 +116,7 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text(
-                      "Enter tag name",
+                      'Enter tag name',
                       textAlign: TextAlign.center,
                     ),
                     shape: const RoundedRectangleBorder(
@@ -164,7 +164,7 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
                 );
               },
               child: const Text(
-                "Create Tag +",
+                'Create Tag +',
                 style: TextStyle(fontSize: 15),
               ),
             ),
@@ -184,53 +184,56 @@ class _TagsSelectionDialogState extends State<TagsSelectionDialog> {
             filteredTags.isEmpty
                 ? const Text('No tags exist.\nTap + icon to create a new tag.')
                 : SizedBox(
-                    height: 250,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: filteredTags.map((tag) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: Material(
-                              elevation: 2,
-                              borderRadius: BorderRadius.circular(10),
-                              color: Colors.grey[100],
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: CheckboxListTile(
-                                      title: Text(
-                                        "# ${tag.name}",
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                      value: selectedTags
-                                          .map((e) => e.id)
-                                          .contains(tag.id),
-                                      onChanged: (isSelected) =>
-                                          updateTags(tag, isSelected!),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                    ),
-                                    onPressed: () => _confirmDeleteTag(
-                                        tag), // Ask before deleting
-                                  ),
-                                ],
+              height: 250,
+              child: SingleChildScrollView(
+                child: Column(
+                  children: filteredTags.map((tag) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Material(
+                        elevation: 2,
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.grey[100],
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: CheckboxListTile(
+                                title: Text(
+                                  '# ${tag.name}',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                value: selectedTags
+                                    .map((e) => e.id)
+                                    .contains(tag.id),
+                                onChanged: (isSelected) => updateTags(tag, isSelected!),
                               ),
                             ),
-                          );
-                        }).toList(),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.delete,
+                                color: Colors.red,
+                              ),
+                              onPressed: () async {
+                                await tagProvider.removeTag(tag.id);
+                                loadTags();
+                                setState(() { });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
           ],
         ),
         actions: [
           FilledButton(
-            onPressed: () {
-              print("Count of selected tags: ${selectedTags.length}");
+            onPressed: ()
+            {
+              print('Count of selected tags: ${selectedTags.length}');
               Navigator.of(context).pop(selectedTags);
             },
             child: const Text('Done'),

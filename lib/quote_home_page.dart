@@ -64,23 +64,6 @@ class _QuoteHomePageState extends State<QuoteHomePage>
   List<String> selectedTagNames = [];
   Timer? _wallpaperChangeTimer;
   bool isApiEnable = true;
-  bool isWallpaperEnabled = false;
-  String selectedHomeScreenTag = '';
-  String selectedLockScreenTag = '';
-  List<Map<String, dynamic>> allQuotes = [
-    {
-      "id": 1,
-      "text": "Be yourself!",
-      "author": "Unknown",
-      "tags": ["Life"]
-    },
-    {
-      "id": 2,
-      "text": "Never give up!",
-      "author": "Winston Churchill",
-      "tags": ["Motivation"]
-    }
-  ];
 
   @override
   void initState() {
@@ -106,200 +89,51 @@ class _QuoteHomePageState extends State<QuoteHomePage>
   }
 
   Future<void> _initializeApiSettings() async {
-    final isFirstLaunch = await SettingsHelper.isFirstLaunch();
-    if (isFirstLaunch) {
-      await SettingsHelper.setApiQuotesEnabled(
-          true); // Enable API by default on first launch
+    isApiEnable = await SettingsHelper.isApiQuotesEnabled();
+    if (isApiEnable) {
+      _startWallpaperChangeTimer();
     }
-
-    isApiEnable = await SettingsHelper.isApiQuotesEnabled() ?? true;
-    isWallpaperEnabled = false; // Default to false
     setState(() {});
   }
 
   void _startWallpaperChangeTimer() {
     _wallpaperChangeTimer =
         Timer.periodic(const Duration(minutes: 1), (_) async {
-      if (isWallpaperEnabled) {
-        // Only change wallpaper if enabled
+      if (isApiEnable) {
         final quoteProvider =
             Provider.of<QuoteProvider>(context, listen: false);
         await quoteProvider.fetchQuote();
         final newQuote = quoteProvider.currentQuote;
-
-        // Apply the new quote to both Home and Lock screens
-        await _setLiveWallpaper(newQuote, WallpaperManager.HOME_SCREEN);
-        await _setLiveWallpaper(newQuote, WallpaperManager.LOCK_SCREEN);
+        await _setLiveWallpaper(newQuote);
       }
     });
   }
 
-  Future<void> _showWallpaperSelectionDialog(BuildContext context) async {
-    final quoteProvider = Provider.of<QuoteProvider>(context, listen: false);
-
-    await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Select Tags for Wallpaper'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Select a tag for Home Screen Wallpaper'),
-                  DropdownButton<String>(
-                    value: selectedHomeScreenTag.isEmpty
-                        ? null
-                        : selectedHomeScreenTag, // Keep previous selection
-                    hint: const Text('Select a tag'),
-                    onChanged: (String? newTag) {
-                      if (newTag != null) {
-                        setState(() {
-                          selectedHomeScreenTag = newTag;
-                        });
-                      }
-                    },
-                    items: tags.map((tag) {
-                      return DropdownMenuItem<String>(
-                        value: tag.name,
-                        child: Text(tag.name),
-                      );
-                    }).toList(),
-                  ),
-                  if (selectedHomeScreenTag.isNotEmpty)
-                    Text('Selected: $selectedHomeScreenTag',
-                        style: const TextStyle(color: Colors.blue)),
-                  const SizedBox(height: 10),
-                  const Text('Select a tag for Lock Screen Wallpaper'),
-                  DropdownButton<String>(
-                    value: selectedLockScreenTag.isEmpty
-                        ? null
-                        : selectedLockScreenTag, // Keep previous selection
-                    hint: const Text('Select a tag'),
-                    onChanged: (String? newTag) {
-                      if (newTag != null) {
-                        setState(() {
-                          selectedLockScreenTag = newTag;
-                        });
-                      }
-                    },
-                    items: tags.map((tag) {
-                      return DropdownMenuItem<String>(
-                        value: tag.name,
-                        child: Text(tag.name),
-                      );
-                    }).toList(),
-                  ),
-                  if (selectedLockScreenTag.isNotEmpty)
-                    Text('Selected: $selectedLockScreenTag',
-                        style: const TextStyle(color: Colors.blue)),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close the dialog without changes
-                  },
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    if (selectedHomeScreenTag.isNotEmpty &&
-                        selectedLockScreenTag.isNotEmpty) {
-                      // Only apply wallpapers if both tags are selected
-                      _applyWallpapers(
-                          selectedHomeScreenTag, selectedLockScreenTag);
-                      Navigator.pop(context); // Close the dialog after applying
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content:
-                              Text('Please select tags for both wallpapers.'),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Apply Wallpapers'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _applyWallpapers(
-      String homeScreenTag, String lockScreenTag) async {
-    final quoteProvider = Provider.of<QuoteProvider>(context, listen: false);
-
-    // Fetch quotes based on selected tags
-    await quoteProvider.fetchQuote(tags: [homeScreenTag]);
-    final homeScreenQuote = quoteProvider.currentQuote;
-
-    await quoteProvider.fetchQuote(tags: [lockScreenTag]);
-    final lockScreenQuote = quoteProvider.currentQuote;
-
-    // Set wallpapers for both screens based on selected tags
-    if (homeScreenQuote.isNotEmpty) {
-      await _setLiveWallpaper(homeScreenQuote, WallpaperManager.HOME_SCREEN);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No quote found for Home Screen tag.'),
-        ),
-      );
-    }
-
-    if (lockScreenQuote.isNotEmpty) {
-      await _setLiveWallpaper(lockScreenQuote, WallpaperManager.LOCK_SCREEN);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No quote found for Lock Screen tag.'),
-        ),
-      );
-    }
-
-    // Show success message with green color
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: Colors.green, // Set background to green
-        content: Text('Wallpapers set successfully!'),
-      ),
-    );
-  }
-
-  Future<void> _setLiveWallpaper(String quote, int screen) async {
+  Future<void> _setLiveWallpaper(String quote) async {
     try {
       List<String> words = quote.split(' ');
       String animatedText = '';
       int index = 0;
 
-      if (screen == WallpaperManager.HOME_SCREEN) {
-        // Apply animated text for Home Screen Wallpaper
-        Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-          if (index < words.length) {
-            animatedText += '${words[index]} ';
-            index++;
-            final imageFile = await _generateQuoteImage(animatedText.trim());
-            await WallpaperManager.setWallpaperFromFile(
-              imageFile.path,
-              screen,
-            );
-          } else {
-            timer.cancel();
-          }
-        });
-      } else if (screen == WallpaperManager.LOCK_SCREEN) {
-        // Apply full quote immediately to Lock Screen Wallpaper
-        final imageFile = await _generateQuoteImage(quote);
-        await WallpaperManager.setWallpaperFromFile(
-          imageFile.path,
-          screen,
-        );
-      }
+      Timer.periodic(const Duration(milliseconds: 500), (timer) async {
+        if (index < words.length) {
+          animatedText += '${words[index]} ';
+          index++;
+          final imageFile = await _generateQuoteImage(animatedText.trim());
+          await WallpaperManager.setWallpaperFromFile(
+            imageFile.path,
+            WallpaperManager.HOME_SCREEN,
+          );
+        } else {
+          timer.cancel();
+        }
+      });
+
+      final imageFile = await _generateQuoteImage(quote);
+      await WallpaperManager.setWallpaperFromFile(
+        imageFile.path,
+        WallpaperManager.LOCK_SCREEN,
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -318,32 +152,38 @@ class _QuoteHomePageState extends State<QuoteHomePage>
       recorder,
       Rect.fromPoints(Offset.zero, Offset(screenWidth, screenHeight)),
     );
+
     canvas.drawRect(
       Rect.fromLTWH(0, 0, screenWidth, screenHeight),
       Paint()..color = Colors.white,
     );
+
     double fontSize = 40.0;
     final textStyle = TextStyle(
       fontSize: fontSize,
       fontStyle: FontStyle.italic,
       color: Colors.black,
     );
+
     final textSpan = TextSpan(text: quote, style: textStyle);
     final textPainter = TextPainter(
       text: textSpan,
       textDirection: TextDirection.ltr,
     );
+
     textPainter.layout(maxWidth: screenWidth * 0.8);
     final offset = Offset(
       (screenWidth - textPainter.width) / 2,
       (screenHeight - textPainter.height) / 2,
     );
     textPainter.paint(canvas, offset);
+
     final picture = recorder.endRecording();
     final img =
         await picture.toImage(screenWidth.toInt(), screenHeight.toInt());
     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
     final buffer = byteData!.buffer.asUint8List();
+
     final directory = await getApplicationDocumentsDirectory();
     final file = File('${directory.path}/quote_image.png');
     await file.writeAsBytes(buffer);
@@ -362,6 +202,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
     final quoteBox = Hive.box<QuoteModel>('quotesBox');
     if (quoteBox.isEmpty) return null;
     final randomIndex = Random().nextInt(quoteBox.length);
+    return quoteBox.getAt(randomIndex)?.quote;
     return quoteBox.getAt(randomIndex)?.quote;
   }
 
@@ -399,7 +240,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
         .where((entry) => entry.value)
         .map((entry) => tags[entry.key].name)
         .toList();
-    print("Selected tag length: ${selectedTagNames.length}");
+    print('Selected tag length: ${selectedTagNames.length}');
     await provider.fetchQuote(tags: selectedTagNames);
 
     setState(() {});
@@ -597,9 +438,11 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                   child: Row(
                     children: [
                       InkWell(
-                        child: Icon(allSelected
-                            ? Icons.check_box
-                            : Icons.check_box_outline_blank),
+                        child: Icon(
+                          allSelected
+                              ? Icons.check_box
+                              : Icons.check_box_outline_blank,
+                        ),
                         onTap: () {
                           toggleAllTags();
                         },
@@ -624,9 +467,11 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                       child: Row(
                         children: [
                           InkWell(
-                            child: Icon(selectedTags[index]
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank),
+                            child: Icon(
+                              selectedTags[index]
+                                  ? Icons.check_box
+                                  : Icons.check_box_outline_blank,
+                            ),
                             onTap: () {
                               toggleTagSelection(index, !selectedTags[index]);
                             },
@@ -654,225 +499,168 @@ class _QuoteHomePageState extends State<QuoteHomePage>
     final quoteProvider = Provider.of<QuoteProvider>(context);
 
     return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-          actions: [
-            // API Toggle
-            FutureBuilder<bool>(
-              future: SettingsHelper.isApiQuotesEnabled(),
-              builder: (context, snapshot) {
-                final isApiEnabled = snapshot.data ?? true;
-                return Switch(
-                  value: isApiEnabled,
-                  onChanged: (value) async {
-                    await SettingsHelper.setApiQuotesEnabled(value);
-                    setState(() {}); // Refresh UI
-                  },
-                  activeColor: Colors.green,
-                  inactiveThumbColor: Colors.red,
-                );
-              },
-            ),
-
-            // Wallpaper Toggle
-            Switch(
-              value: isWallpaperEnabled,
-              onChanged: (value) {
-                setState(() {
-                  isWallpaperEnabled = value;
-                });
-
-                if (isWallpaperEnabled) {
-                  _startWallpaperChangeTimer();
-                } else {
-                  _wallpaperChangeTimer?.cancel();
-                }
-              },
-              activeColor: Colors.blue,
-              inactiveThumbColor: Colors.grey,
-            ),
-          ],
-        ),
-        // Adding Drawer
-        drawer: Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: <Widget>[
-              const DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                ),
-                child: Text(
-                  'Menu',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                  ),
-                ),
-              ),
-              // Import CSV File option inside the Drawer
-              ListTile(
-                title: const Text('Import CSV File'),
-                trailing: IconButton(
-                  icon:
-                      const Icon(Icons.upload_file), // Updated icon for clarity
-                  onPressed: () async {
-                    // Call the import function and handle any further actions here
-                    await importQuotesFromCSV(context);
-                  },
-                ),
-                subtitle: const Text(
-                  'Select a CSV file in the supported format of Home Widget.',
-                  style: TextStyle(fontSize: 12.0, color: Colors.grey),
-                ),
-              ),
-
-              // Add other menu items if needed
-            ],
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          FutureBuilder<bool>(
+            future: SettingsHelper.isApiQuotesEnabled(),
+            builder: (context, snapshot) {
+              final isApiEnabled = snapshot.data ?? true;
+              return Switch(
+                value: isApiEnabled,
+                onChanged: (value) async {
+                  await SettingsHelper.setApiQuotesEnabled(value);
+                  setState(() {}); // Refresh UI
+                },
+                activeColor: Colors.green,
+                inactiveThumbColor: Colors.red,
+              );
+            },
           ),
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {
-            // Ensure `allQuotes` exists in your widget
-            exportQuotesToCSV(context, allQuotes);
-          },
-          backgroundColor: Colors.green,
-          label: const Text("Share"),
-          icon: const Icon(Icons.share),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10),
-          child: SizedBox(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Row(
-                    children: [
-                      _buildTagsStrip(context),
-                    ],
-                  ),
-                  const Text(
-                    'Current Quote:',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  FutureBuilder<bool>(
-                    future: SettingsHelper.isApiQuotesEnabled(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const CircularProgressIndicator(); // Show progress while loading settings
-                      }
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10),
+        child: SizedBox(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Row(
+                  children: [
+                    _buildTagsStrip(context),
+                  ],
+                ),
+                const Text(
+                  'Current Quote:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                FutureBuilder<bool>(
+                  future: SettingsHelper.isApiQuotesEnabled(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const CircularProgressIndicator(); // Show progress while loading settings
+                    }
 
-                      final isApiEnabled = snapshot.data ?? true;
+                    final isApiEnabled = snapshot.data ?? true;
 
-                      if (isApiEnabled) {
-                        if (quoteProvider.isFetching) {
-                          return const CircularProgressIndicator(); // Show progress while fetching from API
-                        } else {
-                          return Text(
-                            quoteProvider.currentQuote,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 20, fontStyle: FontStyle.italic),
-                          );
-                        }
+                    if (isApiEnabled) {
+                      if (quoteProvider.isFetching) {
+                        return const CircularProgressIndicator(); // Show progress while fetching from API
                       } else {
-                        // Simulate loading state for Hive quotes
-                        return FutureBuilder<String?>(
-                          future: QuoteProvider()
-                              .fetchRandomQuote(selectedTagNames),
-                          // Fetch quote from the function
-                          builder: (context, localSnapshot) {
-                            if (localSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const CircularProgressIndicator(); // Show progress while loading the quote
-                            }
-
-                            if (localSnapshot.hasError) {
-                              return const Text(
-                                'Error fetching local quote',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    fontSize: 20, fontStyle: FontStyle.italic),
-                              );
-                            }
-
-                            if (localSnapshot.hasData) {
-                              // Once data is available, show the quote
-                              final randomQuote = localSnapshot
-                                  .data; // This will be the quote fetched from fetchRandomQuote
-                              return Text(
-                                randomQuote ?? "No quote found.",
-                                // If no quote found, show a fallback message
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    fontSize: 20, fontStyle: FontStyle.italic),
-                              );
-                            }
-
-                            // In case no data and no error, show fallback message
-                            return const Text(
-                              'No quote found',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 20, fontStyle: FontStyle.italic),
-                            );
-                          },
+                        return Text(
+                          quoteProvider.currentQuote,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontStyle: FontStyle.italic,
+                          ),
                         );
                       }
-                    },
-                  ),
-                  const SizedBox(
-                    height: 30,
-                  ),
-                  ElevatedButton(
-                    onPressed: _fetchAndDisplayQuote,
-                    child: const Text('Fetch New Quote'),
-                  ),
-                  GestureDetector(
-                    onTap: () async {
-                      await showForm(context, "Widget Configuration");
-                    },
-                    child: const Text('Pin Widget to Home Screen'),
-                  ),
-                  const SizedBox(height: 15),
-                  ElevatedButton(
-                    onPressed: isWallpaperEnabled
-                        ? () async {
-                            // First, show the wallpaper selection dialog
-                            await _showWallpaperSelectionDialog(context);
-
-                            // Check if there is a valid quote available after tag selection
-                            /* if (quoteProvider.currentQuote.isNotEmpty) {
-                              // Apply the live wallpaper based on the selected quote
-                              await _setLiveWallpaper(
-                                  quoteProvider.currentQuote);
-                            } else {
-                              // Show an error message if no quote is available
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  backgroundColor: Colors.red,
-                                  content:
-                                      Text('No quote available for wallpaper'),
-                                ),
-                              );
-                            }*/
+                    } else {
+                      // Simulate loading state for Hive quotes
+                      return FutureBuilder<String?>(
+                        future: QuoteProvider().fetchRandomQuote(
+                          selectedTagNames,
+                        ),
+                        // Fetch quote from the function
+                        builder: (context, localSnapshot) {
+                          if (localSnapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const CircularProgressIndicator(); // Show progress while loading the quote
                           }
-                        : null, // Disable the button if wallpaper feature is off
-                    child: const Text('Set Quote as Wallpaper'),
-                  ),
-                  const SizedBox(
-                    height: 15,
-                  ),
-                  Expanded(
-                      child: CustomQuotes(
+
+                          if (localSnapshot.hasError) {
+                            return const Text(
+                              'Error fetching local quote',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            );
+                          }
+
+                          if (localSnapshot.hasData) {
+                            // Once data is available, show the quote
+                            final randomQuote = localSnapshot
+                                .data; // This will be the quote fetched from `fetchRandomQuote`
+                            return Text(
+                              randomQuote?.split('*').first ??
+                                  'No quote found.',
+                              // If no quote found, show a fallback message
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            );
+                          }
+
+                          // In case no data and no error, show fallback message
+                          return const Text(
+                            'No quote found',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          );
+                        },
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(
+                  height: 30,
+                ),
+                ElevatedButton(
+                  onPressed: _fetchAndDisplayQuote,
+                  child: const Text('Fetch New Quote'),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    await showForm(context, 'Widget Configuration');
+                  },
+                  child: const Text('Pin Widget to Home Screen'),
+                ),
+                const SizedBox(height: 15),
+                GestureDetector(
+                  onTap: () async {
+                    if (isApiEnable && quoteProvider.currentQuote.isNotEmpty) {
+                      await _setLiveWallpaper(quoteProvider.currentQuote);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: Colors.green,
+                          content: Text('Wallpaper set successfully!'),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: Colors.red,
+                          content:
+                              Text('Failed: Enable API or no quotes available'),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Set Quote to Wallpaper'),
+                ),
+                const SizedBox(
+                  height: 15,
+                ),
+                Expanded(
+                  child: CustomQuotes(
                     selectedTagNames: selectedTagNames,
-                  ))
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 }
