@@ -78,7 +78,8 @@ class _CustomQuotesState extends State<CustomQuotes> {
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredQuotes = _allQuotes
-          .where((quote) => quote.quote.split('*').first.toLowerCase().contains(query))
+          .where((quote) =>
+              quote.quote.split('*').first.toLowerCase().contains(query))
           .toList();
     });
   }
@@ -243,7 +244,7 @@ class _CustomQuotesState extends State<CustomQuotes> {
                   final quote = quoteController.text.trim();
                   final description = descriptionController.text.trim();
                   if (quote.isNotEmpty) {
-                    _addQuote(quote, description, attachment!.path);
+                    _addQuote(quote, description, attachment?.path);
                     setState(
                       () {
                         attachment = null;
@@ -264,11 +265,11 @@ class _CustomQuotesState extends State<CustomQuotes> {
   Future<void> _addQuote(
     String quote,
     String description,
-    String attachmentPath,
+    String? attachmentPath,
   ) async {
     final quoteProvider = Provider.of<QuoteProvider>(context, listen: false);
     await quoteProvider.addQuote(
-      '$quote*$attachmentPath',
+      attachmentPath != null ? '$quote*$attachmentPath' : quote,
       selectedTags,
       description,
     );
@@ -395,7 +396,9 @@ class _CustomQuotesState extends State<CustomQuotes> {
                         ),
                         child: Center(
                           child: attachment != null ||
-                                  quote.quote.split('*').lastOrNull != null
+                                  (quote.quote.split('*').lastOrNull != null &&
+                                      File(quote.quote.split('*').last)
+                                          .existsSync())
                               ? Image.file(
                                   attachment ??
                                       File(quote.quote.split('*').last),
@@ -597,7 +600,8 @@ class _CustomQuotesState extends State<CustomQuotes> {
                         elevation: 2,
                         borderRadius: BorderRadius.circular(10),
                         child: ListTile(
-                          leading: quote.quote.split('*').lastOrNull != null
+                          leading: quote.quote.split('*').lastOrNull != null &&
+                                  File(quote.quote.split('*').last).existsSync()
                               ? Image.file(File(quote.quote.split('*').last))
                               : null,
                           title: Text(
