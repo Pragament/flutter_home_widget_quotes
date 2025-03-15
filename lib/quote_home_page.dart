@@ -33,11 +33,13 @@ Future<void> interactiveCallback(Uri? uri) async {
 }
 
 const _quoteKey = 'quote';
+const _descriptionKey = 'description';
 
 Future<void> _fetchAndDisplayQuote() async {
   final provider = QuoteProvider();
   await provider.fetchQuote();
   await HomeWidget.saveWidgetData(_quoteKey, provider.currentQuote);
+  await HomeWidget.saveWidgetData(_descriptionKey, provider.currentQuote);
   await HomeWidget.updateWidget(
     iOSName: 'QuoteWidget',
     androidName: 'QuoteWidgetProvider',
@@ -104,7 +106,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
             Provider.of<QuoteProvider>(context, listen: false);
         await quoteProvider.fetchQuote();
         final newQuote = quoteProvider.currentQuote;
-        await _setLiveWallpaper(newQuote);
+        await _setLiveWallpaper(newQuote.split('*').first);
       }
     });
   }
@@ -129,7 +131,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
         }
       });
 
-      final imageFile = await _generateQuoteImage(quote);
+      final imageFile = await _generateQuoteImage(quote.split('*').first);
       await WallpaperManager.setWallpaperFromFile(
         imageFile.path,
         WallpaperManager.LOCK_SCREEN,
@@ -202,7 +204,6 @@ class _QuoteHomePageState extends State<QuoteHomePage>
     final quoteBox = Hive.box<QuoteModel>('quotesBox');
     if (quoteBox.isEmpty) return null;
     final randomIndex = Random().nextInt(quoteBox.length);
-    return quoteBox.getAt(randomIndex)?.quote;
     return quoteBox.getAt(randomIndex)?.quote;
   }
 
@@ -550,7 +551,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                         return const CircularProgressIndicator(); // Show progress while fetching from API
                       } else {
                         return Text(
-                          quoteProvider.currentQuote,
+                          quoteProvider.currentQuote.split('*').first,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 20,
@@ -629,7 +630,8 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                 GestureDetector(
                   onTap: () async {
                     if (isApiEnable && quoteProvider.currentQuote.isNotEmpty) {
-                      await _setLiveWallpaper(quoteProvider.currentQuote);
+                      await _setLiveWallpaper(
+                          quoteProvider.currentQuote.split('*').first);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           backgroundColor: Colors.green,

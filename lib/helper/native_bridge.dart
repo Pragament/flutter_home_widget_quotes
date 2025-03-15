@@ -10,14 +10,17 @@ class NativeBridge {
       if (call.method == 'getQuoteFromHive') {
         final int index = call.arguments['index'];
         final String order = call.arguments['order'];
-        final List<String> tags = List<String>.from(call.arguments['tags']); // Get the tags from Android
+        final List<String> tags = List<String>.from(
+          call.arguments['tags'],
+        ); // Get the tags from Android
         return await _getSortedQuoteFromHive(index, order, tags);
       }
       return null;
     });
   }
 
-  static Future<String> _getSortedQuoteFromHive(int index, String order, List<String> tags) async {
+  static Future<Map<String, String>> _getSortedQuoteFromHive(
+      int index, String order, List<String> tags) async {
     final box = Hive.box<QuoteModel>('quotesBox');
     if (box.isNotEmpty) {
       List<QuoteModel> quotesList = box.values.toList().cast<QuoteModel>();
@@ -45,8 +48,10 @@ class NativeBridge {
       final filteredQuotes = quotesList.where((quoteModel) {
         for (String tag in tags) {
           // Compare input tag with `TagModel` name field
-          if (quoteModel.tags.any((quoteTag) =>
-          quoteTag.name.trim().toLowerCase() == tag.trim().toLowerCase(),)) {
+          if (quoteModel.tags.any(
+            (quoteTag) =>
+                quoteTag.name.trim().toLowerCase() == tag.trim().toLowerCase(),
+          )) {
             print('Matching Quote Found: ${quoteModel.quote} for Tag: $tag');
             return true; // Match found, include this quote
           }
@@ -60,10 +65,16 @@ class NativeBridge {
       // If there are filtered quotes, return the one at the specified index
       if (filteredQuotes.isNotEmpty) {
         final randomIndex = index % filteredQuotes.length;
-        return filteredQuotes[randomIndex].quote;
+        final selectedQuote = filteredQuotes[randomIndex];
+        return {
+          'quote': selectedQuote.quote,
+          'description': selectedQuote.description ?? '',
+        };
       }
     }
-    return 'No matching quote found.';
+    return {
+      'quote': 'No matching quote found.',
+      'description': '',
+    };
   }
 }
-
