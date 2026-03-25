@@ -11,9 +11,14 @@ import 'package:home_widget_counter/provider/todo_provider.dart';
 import 'package:home_widget_counter/quote_home_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'helper/native_bridge.dart';
 import 'models/quote_model.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 Future<void> main() async {
   // Hive Database
@@ -33,13 +38,56 @@ Future<void> main() async {
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
   // Register an Interactivity Callback. It is necessary that this method is static and public
   await HomeWidget.registerInteractivityCallback(interactiveCallback);
+
+  // Initialize notifications
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  // Initialize Workmanager
+  await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+
   runApp(const MyApp());
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    switch (task) {
+      case 'scheduleTask':
+        await _performScheduledTask();
+        break;
+    }
+    return Future.value(true);
+  });
 }
 
-/// Callback invoked by HomeWidget Plugin when performing interactive actions
-/// The @pragma('vm:entry-point') Notification is required so that the Plugin can find it
-@pragma('vm:entry-point')
-Future<void> interactiveCallback(Uri? uri) async {
+Future<void> _performScheduledTask() async {
+  // Fetch a new quote
+  // Since in background, we can't use provider, so fetch directly
+  // For simplicity, just send a notification
+
+  const AndroidNotificationDetails androidNotificationDetails =
+      AndroidNotificationDetails(
+    'schedule_channel',
+    'Scheduled Updates',
+    channelDescription: 'Notifications for scheduled quote updates',
+    importance: Importance.max,
+    priority: Priority.high,
+  );
+  const NotificationDetails notificationDetails =
+      NotificationDetails(android: androidNotificationDetails);
+
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    'New Quote',
+    'A new quote has been set!',
+    notificationDetails,
+  );
+
+  // Update home widget with a random quote or something
+  // For now, placeholder
+}
   // Set AppGroup Id. This is needed for iOS Apps to talk to their WidgetExtensions
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
 

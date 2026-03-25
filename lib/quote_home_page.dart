@@ -12,6 +12,7 @@ import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
 import 'package:home_widget_counter/todo_home_page.dart';
 import 'package:home_widget_counter/habit_import_page.dart';
+import 'package:home_widget_counter/settings_page.dart';
 import 'package:home_widget_counter/widgets/dialogs/widget_config_dialog.dart';
 import 'package:provider/provider.dart';
 import 'helper/settings_helper.dart';
@@ -517,6 +518,14 @@ class _QuoteHomePageState extends State<QuoteHomePage>
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const TodoHomePage()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
             ),
           ),
           FutureBuilder<bool>(
