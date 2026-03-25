@@ -3,15 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/dash_with_sign.dart';
+import 'package:home_widget_counter/habit_widget.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
+import 'package:home_widget_counter/provider/todo_provider.dart';
 import 'package:home_widget_counter/quote_home_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'helper/native_bridge.dart';
 import 'models/quote_model.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 Future<void> main() async {
   // Hive Database
@@ -20,6 +27,7 @@ Future<void> main() async {
   Hive.registerAdapter(TagModelAdapter());
   await Hive.openBox<QuoteModel>('quotesBox');
   await Hive.openBox<TagModel>('tagsBox');
+  await Hive.openBox('todosBox');
 
   await SharedPreferences.getInstance();
   NativeBridge.registerMethods();
@@ -30,14 +38,65 @@ Future<void> main() async {
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
   // Register an Interactivity Callback. It is necessary that this method is static and public
   await HomeWidget.registerInteractivityCallback(interactiveCallback);
+
+  // Initialize notifications
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initializationSettings =
+      InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  // Initialize Workmanager
+  await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+
   runApp(const MyApp());
 }
 
-/// Callback invoked by HomeWidget Plugin when performing interactive actions
-/// The @pragma('vm:entry-point') Notification is required so that the Plugin can find it
 @pragma('vm:entry-point')
-Future<void> interactiveCallback(Uri? uri) async {
-  // Set AppGroup Id. This is needed for iOS Apps to talk to their WidgetExtensions
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    final tagId = inputData?['tagId'] as String?;
+    if (tagId != null) {
+      await _performScheduledTaskForTag(tagId);
+    }
+    return Future.value(true);
+  });
+}
+
+Future<void> _performScheduledTaskForTag(String tagId) async {
+  // Initialize Hive for background
+  await Hive.initFlutter();
+  Hive.registerAdapter(QuoteModelAdapter());
+  Hive.registerAdapter(TagModelAdapter());
+  await Hive.openBox<QuoteModel>('quotesBox');
+  await Hive.openBox<TagModel>('tagsBox');
+
+  final tagBox = Hive.box<TagModel>('tagsBox');
+  final tag = tagBox.values.firstWhere((t) => t.id == tagId);
+
+  if (tag.enableNotifications) {
+    const AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+      'schedule_channel',
+      'Scheduled Updates',
+      channelDescription: 'Notifications for scheduled quote updates',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const NotificationDetails notificationDetails =
+        NotificationDetails(android: androidNotificationDetails);
+
+    await flutterLocalNotificationsPlugin.show(
+      tagId.hashCode,
+      'New ${tag.name} Quote',
+      'A new quote from ${tag.name} has been set!',
+      notificationDetails,
+    );
+  }
+
+  // For wallpaper, need to fetch a quote with this tag and set it
+  // This is complex in background, perhaps fetch from API or pick random from box
+  // For now, skip wallpaper in background
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
 
   // We check the host of the uri to determine which action should be triggered.
@@ -45,6 +104,8 @@ Future<void> interactiveCallback(Uri? uri) async {
     await _increment();
   } else if (uri?.host == 'clear') {
     await _clear();
+  } else if (uri?.host == 'completeHabit') {
+    await _completeHabit(uri?.queryParameters['id']);
   }
 }
 
@@ -68,6 +129,14 @@ Future<int> _increment() async {
 }
 
 /// Clears the saved Counter Value
+Future<void> _completeHabit(String? habitId) async {
+  if (habitId == null) return;
+  // Logic to mark habit as completed
+  // This would need access to TodoProvider, but since this is a static function, we might need to handle it differently
+  // For now, just update the widget
+  await _updateHabitWidget();
+}
+
 Future<void> _clear() async {
   await _sendAndUpdate(null);
 }
@@ -84,10 +153,37 @@ Future<void> _sendAndUpdate([int? value]) async {
     iOSName: 'CounterWidget',
     androidName: 'CounterWidgetProvider',
   );
-  
+
   if (Platform.isAndroid) {
     // Update Glance Provider
     await HomeWidget.updateWidget(androidName: 'CounterGlanceWidgetReceiver');
+  }
+}
+
+Future<void> _updateHabitWidget() async {
+  // Get next habit to display
+  final box = Hive.box('todosBox');
+  final todos = box.values.map((e) => Map<String, dynamic>.from(e)).toList();
+  final nextHabit = todos.firstWhere(
+    (todo) => todo['isRecurring'] == true && todo['isDone'] == false,
+    orElse: () => <String, dynamic>{},
+  );
+
+  if (nextHabit.isNotEmpty) {
+    await HomeWidget.saveWidgetData('habit_title', nextHabit['title']);
+    await HomeWidget.saveWidgetData('habit_next', 'Next reminder: Soon');
+    await HomeWidget.renderFlutterWidget(
+      HabitWidget(
+        habitTitle: nextHabit['title'],
+        nextReminder: 'Soon',
+      ),
+      key: 'habit_widget',
+      logicalSize: const Size(200, 100),
+    );
+    await HomeWidget.updateWidget(
+      iOSName: 'HabitWidget',
+      androidName: 'HabitWidgetProvider',
+    );
   }
 }
 
@@ -100,6 +196,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => QuoteProvider()),
         ChangeNotifierProvider(create: (_) => TagProvider()),
+        ChangeNotifierProvider(create: (_) => TodoProvider()),
       ],
       child: MaterialApp(
         title: 'Flutter Demo',
@@ -131,6 +228,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   Future<void> _incrementCounter() async {
     await _increment();
+    setState(() {});
+  }
+
+  Future<void> _clearCounter() async {
+    await _clear();
     setState(() {});
   }
 
@@ -192,18 +294,18 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ),
             ),
             TextButton(
-              onPressed: () async {
-                await _clear();
-                setState(() {});
-              },
+              onPressed: _clearCounter,
               child: const Text('Clear'),
             ),
             InkWell(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const QuoteHomePage(title: 'Quotes')));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const QuoteHomePage(title: 'Quotes')));
               },
               child: const Text(
-                  'Goto Next Page',
+                'Goto Next Page',
               ),
             ),
           ],

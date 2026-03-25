@@ -19,17 +19,26 @@ class TagModelAdapter extends TypeAdapter<TagModel> {
     return TagModel(
       id: fields[0] as String,
       name: fields[1] as String,
+      scheduleTime: fields[2] as String?,
+      enableNotifications: fields[3] as bool,
+      enableWallpaper: fields[4] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, TagModel obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name);
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.scheduleTime)
+      ..writeByte(3)
+      ..write(obj.enableNotifications)
+      ..writeByte(4)
+      ..write(obj.enableWallpaper);
   }
 
   @override
