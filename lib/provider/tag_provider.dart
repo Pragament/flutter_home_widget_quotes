@@ -9,11 +9,11 @@ class TagProvider with ChangeNotifier {
   List<TagModel> get tags => _tags;
 
   TagProvider() {
-    _loadTags();
+    // _loadTags(); // Remove automatic load
   }
 
   // Load tags from Hive into _tags
-  Future<void> _loadTags() async {
+  Future<void> loadTags() async {
     final box = Hive.box<TagModel>('tagsBox');
     _tags = box.values.toList();
     notifyListeners();
@@ -55,4 +55,14 @@ class TagProvider with ChangeNotifier {
     }
   }
 
+  // Update entire tag
+  Future<void> updateTag(TagModel updatedTag) async {
+    final box = Hive.box<TagModel>('tagsBox');
+    final index = _tags.indexWhere((tag) => tag.id == updatedTag.id);
+    if (index != -1) {
+      await box.putAt(index, updatedTag);
+      _tags[index] = updatedTag;
+      notifyListeners();
+    }
+  }
 }

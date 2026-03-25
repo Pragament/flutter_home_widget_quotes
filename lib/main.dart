@@ -50,23 +50,31 @@ Future<void> main() async {
   await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
 
   runApp(const MyApp());
-  @pragma('vm:entry-point')
-  void callbackDispatcher() {
-    Workmanager().executeTask((task, inputData) async {
-      switch (task) {
-        case 'scheduleTask':
-          await _performScheduledTask();
-          break;
-      }
-      return Future.value(true);
-    });
-  }
+}
 
-  Future<void> _performScheduledTask() async {
-    // Fetch a new quote
-    // Since in background, we can't use provider, so fetch directly
-    // For simplicity, just send a notification
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    final tagId = inputData?['tagId'] as String?;
+    if (tagId != null) {
+      await _performScheduledTaskForTag(tagId);
+    }
+    return Future.value(true);
+  });
+}
 
+Future<void> _performScheduledTaskForTag(String tagId) async {
+  // Initialize Hive for background
+  await Hive.initFlutter();
+  Hive.registerAdapter(QuoteModelAdapter());
+  Hive.registerAdapter(TagModelAdapter());
+  await Hive.openBox<QuoteModel>('quotesBox');
+  await Hive.openBox<TagModel>('tagsBox');
+
+  final tagBox = Hive.box<TagModel>('tagsBox');
+  final tag = tagBox.values.firstWhere((t) => t.id == tagId);
+
+  if (tag.enableNotifications) {
     const AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
       'schedule_channel',
@@ -79,17 +87,16 @@ Future<void> main() async {
         NotificationDetails(android: androidNotificationDetails);
 
     await flutterLocalNotificationsPlugin.show(
-      0,
-      'New Quote',
-      'A new quote has been set!',
+      tagId.hashCode,
+      'New ${tag.name} Quote',
+      'A new quote from ${tag.name} has been set!',
       notificationDetails,
     );
-
-    // Update home widget with a random quote or something
-    // For now, placeholder
   }
 
-  // Set AppGroup Id. This is needed for iOS Apps to talk to their WidgetExtensions
+  // For wallpaper, need to fetch a quote with this tag and set it
+  // This is complex in background, perhaps fetch from API or pick random from box
+  // For now, skip wallpaper in background
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
 
   // We check the host of the uri to determine which action should be triggered.
