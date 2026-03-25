@@ -56,7 +56,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Duration _calculateInitialDelay(TimeOfDay time) {
     final now = DateTime.now();
-    final scheduledTime = DateTime(now.year, now.month, now.day, time.hour, time.minute);
+    final scheduledTime =
+        DateTime(now.year, now.month, now.day, time.hour, time.minute);
     if (scheduledTime.isBefore(now)) {
       // If the time has passed today, schedule for tomorrow
       return scheduledTime.add(const Duration(days: 1)).difference(now);

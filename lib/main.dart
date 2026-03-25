@@ -50,44 +50,45 @@ Future<void> main() async {
   await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
 
   runApp(const MyApp());
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    switch (task) {
-      case 'scheduleTask':
-        await _performScheduledTask();
-        break;
-    }
-    return Future.value(true);
-  });
-}
+  @pragma('vm:entry-point')
+  void callbackDispatcher() {
+    Workmanager().executeTask((task, inputData) async {
+      switch (task) {
+        case 'scheduleTask':
+          await _performScheduledTask();
+          break;
+      }
+      return Future.value(true);
+    });
+  }
 
-Future<void> _performScheduledTask() async {
-  // Fetch a new quote
-  // Since in background, we can't use provider, so fetch directly
-  // For simplicity, just send a notification
+  Future<void> _performScheduledTask() async {
+    // Fetch a new quote
+    // Since in background, we can't use provider, so fetch directly
+    // For simplicity, just send a notification
 
-  const AndroidNotificationDetails androidNotificationDetails =
-      AndroidNotificationDetails(
-    'schedule_channel',
-    'Scheduled Updates',
-    channelDescription: 'Notifications for scheduled quote updates',
-    importance: Importance.max,
-    priority: Priority.high,
-  );
-  const NotificationDetails notificationDetails =
-      NotificationDetails(android: androidNotificationDetails);
+    const AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+      'schedule_channel',
+      'Scheduled Updates',
+      channelDescription: 'Notifications for scheduled quote updates',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const NotificationDetails notificationDetails =
+        NotificationDetails(android: androidNotificationDetails);
 
-  await flutterLocalNotificationsPlugin.show(
-    0,
-    'New Quote',
-    'A new quote has been set!',
-    notificationDetails,
-  );
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'New Quote',
+      'A new quote has been set!',
+      notificationDetails,
+    );
 
-  // Update home widget with a random quote or something
-  // For now, placeholder
-}
+    // Update home widget with a random quote or something
+    // For now, placeholder
+  }
+
   // Set AppGroup Id. This is needed for iOS Apps to talk to their WidgetExtensions
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
 
@@ -145,7 +146,7 @@ Future<void> _sendAndUpdate([int? value]) async {
     iOSName: 'CounterWidget',
     androidName: 'CounterWidgetProvider',
   );
-  
+
   if (Platform.isAndroid) {
     // Update Glance Provider
     await HomeWidget.updateWidget(androidName: 'CounterGlanceWidgetReceiver');
@@ -291,10 +292,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             ),
             InkWell(
               onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const QuoteHomePage(title: 'Quotes')));
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const QuoteHomePage(title: 'Quotes')));
               },
               child: const Text(
-                  'Goto Next Page',
+                'Goto Next Page',
               ),
             ),
           ],
