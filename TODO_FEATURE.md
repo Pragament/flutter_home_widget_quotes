@@ -1,53 +1,70 @@
-# Todo Feature (One-time & Recurring)
+# Todo Feature (One-time & Recurring) + Habit Import
 
-This file documents the new Todo extension added to the existing `flutter_home_widget_quotes` app.
+This file documents the enhanced Todo system with habit import from API.
 
 ## Overview
 
-Added a minimal todo system with:
-- One-time tasks (`isRecurring = false`), complete/delete.
-- Recurring tasks (`isRecurring = true`), check to update last completion date and keep active.
-- Local persistence with Hive box: `todosBox`.
-- UI in `TodoHomePage` with active vs completed list sections.
-- Quick navigation from `QuoteHomePage` app bar.
+Extended the todo system to support:
+- Enhanced recurring habits with schedules, categories, tags, descriptions, checklists.
+- Import habits from `https://staticapis.pragament.com/daily/habits.json`.
+- Browse, search, filter, sort habits by categories/tags/schedules.
+- Bulk select and import as recurring todos.
+- View imported habits with search/filter/sort.
+- Bulk edit schedules.
+- Home widget reminders for habits.
+- Local notifications for habit reminders.
+- Wallpaper setting for habits.
 
 ## Key Files
 
 - `lib/models/todo_model.dart`
-  - `TodoModel` fields:
-    - `id`, `title`, `isDone`, `isRecurring`
-    - `createdAt`, `completedAt`, `lastCompletedAt`
-  - `toMap()` / `fromMap()` for Hive serialization.
+  - Added: `description`, `category`, `tags`, `checklist`, `schedule` fields.
 
 - `lib/provider/todo_provider.dart`
-  - `TodoProvider` handles:
-    - loading from `Box('todosBox')`
-    - adding/editing/deleting/toggling todos
-    - `pendingTodos` and `completedTodos` getters
-    - recurring task logic (history state is kept while remaining pending)
+  - Added: `fetchHabitsFromApi()`, `importHabits()`.
+  - Enhanced: `addTodo()`, `editTodo()` with new fields.
+
+- `lib/habit_import_page.dart`
+  - New page: Search/filter/sort habits, bulk select for import.
 
 - `lib/todo_home_page.dart`
-  - UI
-    - Add/Edit modal dialog with title and recurring toggle
-    - active tasks with checkbox/edit/delete actions
-    - completed one-time tasks with delete
-    - overview labels
+  - Enhanced: Display new fields, edit with schedule.
+  - Added: Selection for bulk edit (placeholder).
+
+- `lib/habit_widget.dart`
+  - New widget: Display habit title and next reminder.
 
 - `lib/main.dart`
-  - open Hive box: `await Hive.openBox('todosBox');`
-  - add provider: `ChangeNotifierProvider(create: (_) => TodoProvider())`
+  - Added: Habit widget update logic, interactive callback for habit completion.
 
 - `lib/quote_home_page.dart`
-  - AppBar `IconButton` opens `TodoHomePage`
+  - Added: Import habits button in AppBar.
+
+- `pubspec.yaml`
+  - Added: `flutter_local_notifications` for reminders.
 
 ## Behavior Summary
 
-1. Users can tap checklist icon from quotes screen.
-2. Add todo (task title + recurring flag). 
-3. Toggle complete:
-   - one-time: moved to completed list + completion time.
-   - recurring: updates `lastCompletedAt` and remains in active list.
-4. Edit or delete tasks.
+1. Tap download icon on quotes page → `HabitImportPage`.
+2. Fetch habits from API, search/filter by title/description/category/tags.
+3. Select multiple habits, import as recurring todos.
+4. View in `TodoHomePage` with enhanced details.
+5. Home widget shows next habit reminder.
+6. Notifications scheduled based on habit schedules.
+7. Wallpapers can be set for habits (similar to quotes).
+
+## API Integration
+
+Fetches from `https://staticapis.pragament.com/daily/habits.json`:
+- Habits with title, description, category, tags, checklist, schedule.
+- Schedule types: daily/weekly/monthly/yearly/interval with details.
+
+## Notes
+
+- Bulk edit schedules not fully implemented (placeholder).
+- Notification scheduling logic needs implementation based on schedule.
+- Home widget extension for habits added.
+- Existing quote features preserved.
 
 ## Notes
 

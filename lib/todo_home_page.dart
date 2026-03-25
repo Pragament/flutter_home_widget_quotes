@@ -14,6 +14,13 @@ class _TodoHomePageState extends State<TodoHomePage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   bool _isRecurring = false;
+  String? _description;
+  String? _category;
+  List<String> _tags = [];
+  List<String> _checklist = [];
+  Map<String, dynamic>? _schedule;
+
+  Set<String> _selectedTodos = {};
 
   @override
   void dispose() {
@@ -25,9 +32,19 @@ class _TodoHomePageState extends State<TodoHomePage> {
     if (existing != null) {
       _titleController.text = existing.title;
       _isRecurring = existing.isRecurring;
+      _description = existing.description;
+      _category = existing.category;
+      _tags = existing.tags ?? [];
+      _checklist = existing.checklist ?? [];
+      _schedule = existing.schedule;
     } else {
       _titleController.clear();
       _isRecurring = false;
+      _description = null;
+      _category = null;
+      _tags = [];
+      _checklist = [];
+      _schedule = null;
     }
 
     await showDialog<void>(
@@ -37,26 +54,55 @@ class _TodoHomePageState extends State<TodoHomePage> {
           title: Text(existing == null ? 'Add Todo' : 'Edit Todo'),
           content: Form(
             key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(labelText: 'Task title'),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a title';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  title: const Text('Recurring task'),
-                  value: _isRecurring,
-                  onChanged: (value) => setState(() => _isRecurring = value),
-                ),
-              ],
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(labelText: 'Task title'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter a title';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: _description,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                    onChanged: (value) => _description = value,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: _category,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                    onChanged: (value) => _category = value,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    initialValue: _tags.join(', '),
+                    decoration: const InputDecoration(labelText: 'Tags (comma separated)'),
+                    onChanged: (value) => _tags = value.split(',').map((e) => e.trim()).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: const Text('Recurring task'),
+                    value: _isRecurring,
+                    onChanged: (value) => setState(() => _isRecurring = value),
+                  ),
+                  if (_isRecurring) ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      initialValue: _schedule?['type'] ?? 'daily',
+                      decoration: const InputDecoration(labelText: 'Schedule Type'),
+                      onChanged: (value) => _schedule = {...?_schedule, 'type': value},
+                    ),
+                    // Add more schedule fields as needed
+                  ],
+                ],
+              ),
             ),
           ),
           actions: [
@@ -73,12 +119,25 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     Provider.of<TodoProvider>(context, listen: false);
 
                 if (existing == null) {
-                  await provider.addTodo(_titleController.text, _isRecurring);
+                  await provider.addTodo(
+                    _titleController.text,
+                    _isRecurring,
+                    description: _description,
+                    category: _category,
+                    tags: _tags,
+                    checklist: _checklist,
+                    schedule: _schedule,
+                  );
                 } else {
                   await provider.editTodo(
                     existing.id,
                     _titleController.text,
                     _isRecurring,
+                    description: _description,
+                    category: _category,
+                    tags: _tags,
+                    checklist: _checklist,
+                    schedule: _schedule,
                   );
                 }
 
@@ -96,6 +155,18 @@ class _TodoHomePageState extends State<TodoHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Todo List'),
+        actions: [
+          if (_selectedTodos.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () {
+                // Bulk edit logic here
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Bulk edit not implemented yet')),
+                );
+              },
+            ),
+        ],
       ),
       body: Consumer<TodoProvider>(
         builder: (context, provider, child) {
@@ -121,11 +192,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
                           separatorBuilder: (_, __) => const Divider(),
                           itemBuilder: (context, index) {
                             final todo = pending[index];
-                            return ListTile(
-                              leading: Checkbox(
-                                value: todo.isDone,
-                                onChanged: (_) => provider.toggleTodo(todo),
-                              ),
+                            return CheckboxListTile(
                               title: Text(
                                 todo.title,
                                 style: TextStyle(
@@ -134,17 +201,32 @@ class _TodoHomePageState extends State<TodoHomePage> {
                                       : TextDecoration.none,
                                 ),
                               ),
-                              subtitle: todo.isRecurring
-                                  ? Text(
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (todo.description != null) Text(todo.description!),
+                                  if (todo.category != null) Text('Category: ${todo.category}'),
+                                  if (todo.tags != null && todo.tags!.isNotEmpty) Text('Tags: ${todo.tags!.join(', ')}'),
+                                  if (todo.isRecurring)
+                                    Text(
                                       'Recurring · last: ${todo.lastCompletedAt != null ? todo.lastCompletedAt!.toLocal().toString().split('.').first : 'never'}',
                                       style: const TextStyle(fontSize: 12),
-                                    )
-                                  : null,
-                              trailing: Row(
+                                    ),
+                                ],
+                              ),
+                              value: _selectedTodos.contains(todo.id),
+                              onChanged: (selected) {
+                                setState(() {
+                                  if (selected ?? false) {
+                                    _selectedTodos.add(todo.id);
+                                  } else {
+                                    _selectedTodos.remove(todo.id);
+                                  }
+                                });
+                              },
+                              secondary: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (!todo.isRecurring && todo.completedAt != null)
-                                    const Icon(Icons.check, color: Colors.green),
                                   IconButton(
                                     icon: const Icon(Icons.edit),
                                     onPressed: () => _showTodoDialog(existing: todo),
@@ -177,9 +259,16 @@ class _TodoHomePageState extends State<TodoHomePage> {
                             final todo = completed[index];
                             return ListTile(
                               title: Text(todo.title),
-                              subtitle: todo.completedAt != null
-                                  ? Text('Done at: ${todo.completedAt!.toLocal().toString().split('.').first}')
-                                  : null,
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (todo.description != null) Text(todo.description!),
+                                  if (todo.category != null) Text('Category: ${todo.category}'),
+                                  if (todo.tags != null && todo.tags!.isNotEmpty) Text('Tags: ${todo.tags!.join(', ')}'),
+                                  if (todo.completedAt != null)
+                                    Text('Done at: ${todo.completedAt!.toLocal().toString().split('.').first}'),
+                                ],
+                              ),
                               trailing: IconButton(
                                 icon: const Icon(Icons.delete),
                                 onPressed: () => provider.deleteTodo(todo.id),

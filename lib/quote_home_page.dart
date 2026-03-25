@@ -11,6 +11,7 @@ import 'package:home_widget_counter/presentation/custom_quotes.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
 import 'package:home_widget_counter/todo_home_page.dart';
+import 'package:home_widget_counter/habit_import_page.dart';
 import 'package:home_widget_counter/widgets/dialogs/widget_config_dialog.dart';
 import 'package:provider/provider.dart';
 import 'helper/settings_helper.dart';
@@ -502,6 +503,14 @@ class _QuoteHomePageState extends State<QuoteHomePage>
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Import Habits',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HabitImportPage()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.checklist),
             tooltip: 'Todo',

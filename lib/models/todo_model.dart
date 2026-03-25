@@ -8,6 +8,11 @@ class TodoModel {
   DateTime createdAt;
   DateTime? completedAt;
   DateTime? lastCompletedAt;
+  String? description;
+  String? category;
+  List<String>? tags;
+  List<String>? checklist;
+  Map<String, dynamic>? schedule;
 
   TodoModel({
     String? id,
@@ -17,6 +22,11 @@ class TodoModel {
     DateTime? createdAt,
     this.completedAt,
     this.lastCompletedAt,
+    this.description,
+    this.category,
+    this.tags,
+    this.checklist,
+    this.schedule,
   })  : id = id ?? const Uuid().v4(),
         createdAt = createdAt ?? DateTime.now();
 
@@ -33,6 +43,11 @@ class TodoModel {
       lastCompletedAt: map['lastCompletedAt'] != null
           ? DateTime.parse(map['lastCompletedAt'] as String)
           : null,
+      description: map['description'] as String?,
+      category: map['category'] as String?,
+      tags: map['tags'] != null ? List<String>.from(map['tags']) : null,
+      checklist: map['checklist'] != null ? List<String>.from(map['checklist']) : null,
+      schedule: map['schedule'] != null ? Map<String, dynamic>.from(map['schedule']) : null,
     );
   }
 
@@ -46,6 +61,12 @@ class TodoModel {
       if (completedAt != null) 'completedAt': completedAt!.toIso8601String(),
       if (lastCompletedAt != null)
         'lastCompletedAt': lastCompletedAt!.toIso8601String(),
+      if (description != null) 'description': description,
+      if (category != null) 'category': category,
+      if (tags != null) 'tags': tags,
+      if (checklist != null) 'checklist': checklist,
+      if (schedule != null) 'schedule': schedule,
     };
   }
 }
+

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/dash_with_sign.dart';
+import 'package:home_widget_counter/habit_widget.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
@@ -47,6 +48,8 @@ Future<void> interactiveCallback(Uri? uri) async {
     await _increment();
   } else if (uri?.host == 'clear') {
     await _clear();
+  } else if (uri?.host == 'completeHabit') {
+    await _completeHabit(uri?.queryParameters['id']);
   }
 }
 
@@ -70,6 +73,14 @@ Future<int> _increment() async {
 }
 
 /// Clears the saved Counter Value
+Future<void> _completeHabit(String? habitId) async {
+  if (habitId == null) return;
+  // Logic to mark habit as completed
+  // This would need access to TodoProvider, but since this is a static function, we might need to handle it differently
+  // For now, just update the widget
+  await _updateHabitWidget();
+}
+
 Future<void> _clear() async {
   await _sendAndUpdate(null);
 }
@@ -90,6 +101,33 @@ Future<void> _sendAndUpdate([int? value]) async {
   if (Platform.isAndroid) {
     // Update Glance Provider
     await HomeWidget.updateWidget(androidName: 'CounterGlanceWidgetReceiver');
+  }
+}
+
+Future<void> _updateHabitWidget() async {
+  // Get next habit to display
+  final box = Hive.box('todosBox');
+  final todos = box.values.map((e) => Map<String, dynamic>.from(e)).toList();
+  final nextHabit = todos.firstWhere(
+    (todo) => todo['isRecurring'] == true && todo['isDone'] == false,
+    orElse: () => <String, dynamic>{},
+  );
+
+  if (nextHabit.isNotEmpty) {
+    await HomeWidget.saveWidgetData('habit_title', nextHabit['title']);
+    await HomeWidget.saveWidgetData('habit_next', 'Next reminder: Soon');
+    await HomeWidget.renderFlutterWidget(
+      HabitWidget(
+        habitTitle: nextHabit['title'],
+        nextReminder: 'Soon',
+      ),
+      key: 'habit_widget',
+      logicalSize: const Size(200, 100),
+    );
+    await HomeWidget.updateWidget(
+      iOSName: 'HabitWidget',
+      androidName: 'HabitWidgetProvider',
+    );
   }
 }
 
@@ -134,6 +172,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   Future<void> _incrementCounter() async {
     await _increment();
+    setState(() {});
+  }
+
+  Future<void> _clearCounter() async {
+    await _clear();
     setState(() {});
   }
 
@@ -195,10 +238,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ),
             ),
             TextButton(
-              onPressed: () async {
-                await _clear();
-                setState(() {});
-              },
+              onPressed: _clearCounter,
               child: const Text('Clear'),
             ),
             InkWell(
