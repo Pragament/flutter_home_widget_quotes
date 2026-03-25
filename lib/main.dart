@@ -6,6 +6,7 @@ import 'package:home_widget_counter/dash_with_sign.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
+import 'package:home_widget_counter/provider/todo_provider.dart';
 import 'package:home_widget_counter/quote_home_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
   Hive.registerAdapter(TagModelAdapter());
   await Hive.openBox<QuoteModel>('quotesBox');
   await Hive.openBox<TagModel>('tagsBox');
+  await Hive.openBox('todosBox');
 
   await SharedPreferences.getInstance();
   NativeBridge.registerMethods();
@@ -100,6 +102,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => QuoteProvider()),
         ChangeNotifierProvider(create: (_) => TagProvider()),
+        ChangeNotifierProvider(create: (_) => TodoProvider()),
       ],
       child: MaterialApp(
         title: 'Flutter Demo',

@@ -10,17 +10,16 @@ import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/presentation/custom_quotes.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
+import 'package:home_widget_counter/todo_home_page.dart';
 import 'package:home_widget_counter/widgets/dialogs/widget_config_dialog.dart';
 import 'package:provider/provider.dart';
 import 'helper/settings_helper.dart';
 import 'models/quote_model.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/material.dart';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:open_file/open_file.dart';
 
@@ -503,6 +502,14 @@ class _QuoteHomePageState extends State<QuoteHomePage>
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.checklist),
+            tooltip: 'Todo',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const TodoHomePage()),
+            ),
+          ),
           FutureBuilder<bool>(
             future: SettingsHelper.isApiQuotesEnabled(),
             builder: (context, snapshot) {
