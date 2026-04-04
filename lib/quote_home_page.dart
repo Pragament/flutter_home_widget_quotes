@@ -8,6 +8,7 @@ import 'package:hive/hive.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/pages/habit_import_page.dart';
+import 'package:home_widget_counter/pages/todo_home_page.dart';
 import 'package:home_widget_counter/presentation/custom_quotes.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
@@ -504,6 +505,17 @@ class _QuoteHomePageState extends State<QuoteHomePage>
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.checklist),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const TodoHomePage(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.download),
             onPressed: () {

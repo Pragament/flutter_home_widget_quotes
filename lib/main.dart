@@ -4,6 +4,7 @@ import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/dash_with_sign.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
+import 'package:home_widget_counter/models/todo_model.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
 import 'package:home_widget_counter/quote_home_page.dart';
@@ -14,17 +15,20 @@ import 'helper/native_bridge.dart';
 import 'models/quote_model.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   // Hive Database
   await Hive.initFlutter();
   Hive.registerAdapter(QuoteModelAdapter());
   Hive.registerAdapter(TagModelAdapter());
+  Hive.registerAdapter(TodoAdapter());
   await Hive.openBox<QuoteModel>('quotesBox');
   await Hive.openBox<TagModel>('tagsBox');
+  await Hive.openBox<Todo>('todos');
 
   await SharedPreferences.getInstance();
   NativeBridge.registerMethods();
 
-  WidgetsFlutterBinding.ensureInitialized();
   // Set AppGroup Id. This is needed for iOS Apps to talk to their WidgetExtensions
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
