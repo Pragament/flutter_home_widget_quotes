@@ -19,11 +19,15 @@ class Todo {
   @HiveField(4)
   bool isCompleted;
 
+  @HiveField(5)
+  String? scheduledTime;
+
   Todo({
     required this.title,
     required this.description,
     required this.category,
     required this.tags,
     this.isCompleted = false,
+    this.scheduledTime,
   });
 }

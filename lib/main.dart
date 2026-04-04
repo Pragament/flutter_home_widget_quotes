@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/dash_with_sign.dart';
+import 'package:home_widget_counter/helper/notifications_helper.dart';
+import 'package:home_widget_counter/helper/todo_scheduler.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/models/todo_model.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
@@ -10,6 +12,7 @@ import 'package:home_widget_counter/provider/tag_provider.dart';
 import 'package:home_widget_counter/quote_home_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'helper/native_bridge.dart';
 import 'models/quote_model.dart';
@@ -25,6 +28,11 @@ Future<void> main() async {
   await Hive.openBox<QuoteModel>('quotesBox');
   await Hive.openBox<TagModel>('tagsBox');
   await Hive.openBox<Todo>('todos');
+  await NotificationsHelper.initialize(requestPermission: true);
+  await Workmanager().initialize(
+    todoWorkmanagerDispatcher,
+    isInDebugMode: false,
+  );
 
   await SharedPreferences.getInstance();
   NativeBridge.registerMethods();

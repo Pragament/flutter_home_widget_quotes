@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../helper/todo_box_helper.dart';
+import '../helper/todo_scheduler.dart';
 import '../models/todo_model.dart';
 
 class TodoHomePage extends StatefulWidget {
@@ -18,6 +19,48 @@ class _TodoHomePageState extends State<TodoHomePage> {
   void initState() {
     super.initState();
     _todoBoxFuture = TodoBoxHelper.getTodoBox();
+  }
+
+  TimeOfDay _parseInitialTime(String? time) {
+    if (time == null || !time.contains(':')) {
+      return TimeOfDay.now();
+    }
+
+    final parts = time.split(':');
+    final hour = int.tryParse(parts[0]) ?? TimeOfDay.now().hour;
+    final minute = int.tryParse(parts[1]) ?? TimeOfDay.now().minute;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Future<void> _pickScheduleTime(Box<Todo> box, int index, Todo todo) async {
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: _parseInitialTime(todo.scheduledTime),
+    );
+
+    if (selectedTime == null) {
+      return;
+    }
+
+    todo.scheduledTime = _formatTime(selectedTime);
+    await box.putAt(index, todo);
+    await scheduleTask(todo);
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Scheduled ${todo.title} at ${todo.scheduledTime}'),
+      ),
+    );
   }
 
   @override
@@ -76,9 +119,14 @@ class _TodoHomePageState extends State<TodoHomePage> {
                       todo.title.isEmpty ? 'Untitled Todo' : todo.title,
                     ),
                     subtitle: Text(
-                      todo.category.isEmpty ? 'Uncategorized' : todo.category,
+                      '${todo.category.isEmpty ? 'Uncategorized' : todo.category}'
+                      '${todo.scheduledTime == null ? '' : ' • ${todo.scheduledTime}'}',
                     ),
                     controlAffinity: ListTileControlAffinity.leading,
+                    secondary: IconButton(
+                      icon: const Icon(Icons.access_time),
+                      onPressed: () => _pickScheduleTime(box, index, todo),
+                    ),
                   );
                 },
               );
