@@ -7,6 +7,7 @@ import 'package:flutter_wallpaper_manager/flutter_wallpaper_manager.dart';
 import 'package:hive/hive.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
+import 'package:home_widget_counter/pages/habit_import_page.dart';
 import 'package:home_widget_counter/presentation/custom_quotes.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
@@ -503,6 +504,17 @@ class _QuoteHomePageState extends State<QuoteHomePage>
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const HabitImportPage(),
+                ),
+              );
+            },
+          ),
           FutureBuilder<bool>(
             future: SettingsHelper.isApiQuotesEnabled(),
             builder: (context, snapshot) {
