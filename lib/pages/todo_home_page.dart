@@ -48,9 +48,10 @@ class _TodoHomePageState extends State<TodoHomePage> {
       return;
     }
 
+    final taskId = box.keyAt(index).toString();
     todo.scheduledTime = _formatTime(selectedTime);
     await box.putAt(index, todo);
-    await scheduleTask(todo);
+    await scheduleTask(taskId: taskId, todo: todo);
 
     if (!mounted) {
       return;
@@ -59,6 +60,105 @@ class _TodoHomePageState extends State<TodoHomePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Scheduled ${todo.title} at ${todo.scheduledTime}'),
+      ),
+    );
+  }
+
+  Future<void> _deleteTodo(Box<Todo> box, int index, Todo todo) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Todo'),
+          content: Text('Delete "${todo.title}" from your todo list?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    final taskId = box.keyAt(index).toString();
+    await cancelTask(taskId);
+    await box.deleteAt(index);
+  }
+
+  Widget _buildTodoDetails(Box<Todo> box, int index, Todo todo) {
+    final tagsText = todo.tags.isEmpty ? 'No tags' : todo.tags.join(', ');
+    final scheduleText = todo.scheduledTime == null || todo.scheduledTime!.isEmpty
+        ? 'Not set'
+        : todo.scheduledTime!;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: todo.isCompleted,
+                  onChanged: (value) async {
+                    todo.isCompleted = value ?? false;
+                    await box.putAt(index, todo);
+                  },
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        todo.title.isEmpty ? 'Untitled Todo' : todo.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        todo.description.isEmpty
+                            ? 'No description'
+                            : todo.description,
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Category: ${todo.category.isEmpty ? 'Uncategorized' : todo.category}'),
+                      const SizedBox(height: 4),
+                      Text('Tags: $tagsText'),
+                      const SizedBox(height: 4),
+                      Text('Time: $scheduleText'),
+                    ],
+                  ),
+                ),
+                Column(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.access_time),
+                      onPressed: () => _pickScheduleTime(box, index, todo),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteTodo(box, index, todo),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -102,32 +202,14 @@ class _TodoHomePageState extends State<TodoHomePage> {
 
               return ListView.separated(
                 itemCount: box.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, __) => const SizedBox.shrink(),
                 itemBuilder: (context, index) {
                   final todo = box.getAt(index);
                   if (todo == null) {
                     return const SizedBox.shrink();
                   }
 
-                  return CheckboxListTile(
-                    value: todo.isCompleted,
-                    onChanged: (value) async {
-                      todo.isCompleted = value ?? false;
-                      await box.putAt(index, todo);
-                    },
-                    title: Text(
-                      todo.title.isEmpty ? 'Untitled Todo' : todo.title,
-                    ),
-                    subtitle: Text(
-                      '${todo.category.isEmpty ? 'Uncategorized' : todo.category}'
-                      '${todo.scheduledTime == null ? '' : ' • ${todo.scheduledTime}'}',
-                    ),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    secondary: IconButton(
-                      icon: const Icon(Icons.access_time),
-                      onPressed: () => _pickScheduleTime(box, index, todo),
-                    ),
-                  );
+                  return _buildTodoDetails(box, index, todo);
                 },
               );
             },

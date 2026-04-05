@@ -46,7 +46,11 @@ class NotificationsHelper {
     await androidPlugin?.requestNotificationsPermission();
   }
 
-  static Future<void> showNotification(String title, String body) async {
+  static Future<void> showNotification({
+    required int notificationId,
+    required String title,
+    required String body,
+  }) async {
     const notificationDetails = NotificationDetails(
       android: AndroidNotificationDetails(
         'habit_reminders',
@@ -58,7 +62,7 @@ class NotificationsHelper {
     );
 
     await _plugin.show(
-      title.hashCode,
+      notificationId,
       title,
       body,
       notificationDetails,

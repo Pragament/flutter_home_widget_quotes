@@ -6,7 +6,7 @@ import 'package:workmanager/workmanager.dart';
 import 'notifications_helper.dart';
 import '../models/todo_model.dart';
 
-const String todoTaskName = 'todoScheduledTask';
+const String todoTaskName = 'habitTask';
 
 @pragma('vm:entry-point')
 void todoWorkmanagerDispatcher() {
@@ -14,11 +14,16 @@ void todoWorkmanagerDispatcher() {
     DartPluginRegistrant.ensureInitialized();
     await NotificationsHelper.initialize();
 
+    final taskId = inputData?['taskId']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
     final title = inputData?['title']?.toString() ?? 'Unknown Todo';
+    final tagName = inputData?['tagName']?.toString() ?? 'Habit';
+    final description = inputData?['description']?.toString() ?? '';
+    final notificationBody = description.isNotEmpty ? description : title;
     print('Workmanager callback started for $title');
     await NotificationsHelper.showNotification(
-      'New Habit Reminder',
-      title,
+      notificationId: taskId.hashCode,
+      title: 'New $tagName Quote',
+      body: notificationBody,
     );
     print('Notification shown for $title');
     debugPrint('Task triggered for $title');
@@ -26,7 +31,7 @@ void todoWorkmanagerDispatcher() {
   });
 }
 
-String _taskUniqueName(Todo todo) => 'todo_${todo.title}';
+String _taskUniqueName(String taskId) => 'todo_$taskId';
 
 Duration _delayUntilNextRun(String scheduledTime) {
   final parts = scheduledTime.split(':');
@@ -49,9 +54,12 @@ Duration _delayUntilNextRun(String scheduledTime) {
   return scheduledDateTime.difference(now);
 }
 
-Future<void> scheduleTask(Todo todo) async {
+Future<void> scheduleTask({
+  required String taskId,
+  required Todo todo,
+}) async {
   final scheduledTime = todo.scheduledTime;
-  final uniqueName = _taskUniqueName(todo);
+  final uniqueName = _taskUniqueName(taskId);
 
   await Workmanager().cancelByUniqueName(uniqueName);
 
@@ -64,8 +72,15 @@ Future<void> scheduleTask(Todo todo) async {
     todoTaskName,
     initialDelay: _delayUntilNextRun(scheduledTime),
     inputData: {
+      'taskId': taskId,
       'title': todo.title,
+      'description': todo.description,
+      'tagName': todo.tags.isNotEmpty ? todo.tags.first : 'Habit',
       'scheduledTime': scheduledTime,
     },
   );
+}
+
+Future<void> cancelTask(String taskId) async {
+  await Workmanager().cancelByUniqueName(_taskUniqueName(taskId));
 }

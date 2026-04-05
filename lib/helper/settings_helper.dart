@@ -19,6 +19,7 @@ import '../models/tag_model.dart';
 
 class SettingsHelper {
   static const String apiQuotesKey = 'apiQuotesEnabled';
+  static const String wallpaperEnabledKey = 'wallpaperEnabled';
   static const String prefsFileName = 'quote_prefs';
   static const String tagsKey = 'savedTags';
   static const String firstLaunchKey = 'firstLaunch';
@@ -49,6 +50,18 @@ class SettingsHelper {
   static Future<void> setApiQuotesEnabled(bool isEnabled) async {
     final prefs = await _getSharedPreferences();
     await prefs.setBool(apiQuotesKey, isEnabled);
+  }
+
+  /// Check if wallpaper change is enabled (default: false)
+  static Future<bool> isWallpaperEnabled() async {
+    final prefs = await _getSharedPreferences();
+    return prefs.getBool(wallpaperEnabledKey) ?? false;
+  }
+
+  /// Enable or disable wallpaper change
+  static Future<void> setWallpaperEnabled(bool isEnabled) async {
+    final prefs = await _getSharedPreferences();
+    await prefs.setBool(wallpaperEnabledKey, isEnabled);
   }
 
   /// Save a list of tags to SharedPreferences

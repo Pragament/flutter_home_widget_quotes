@@ -6,6 +6,7 @@ import 'package:home_widget_counter/dash_with_sign.dart';
 import 'package:home_widget_counter/helper/notifications_helper.dart';
 import 'package:home_widget_counter/helper/todo_scheduler.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
+import 'package:home_widget_counter/models/tag_settings_model.dart';
 import 'package:home_widget_counter/models/todo_model.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
@@ -24,9 +25,11 @@ Future<void> main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(QuoteModelAdapter());
   Hive.registerAdapter(TagModelAdapter());
+  Hive.registerAdapter(TagSettingsModelAdapter());
   Hive.registerAdapter(TodoAdapter());
   await Hive.openBox<QuoteModel>('quotesBox');
   await Hive.openBox<TagModel>('tagsBox');
+  await Hive.openBox<TagSettingsModel>('tagSettingsBox');
   await Hive.openBox<Todo>('todos');
   await NotificationsHelper.initialize(requestPermission: true);
   await Workmanager().initialize(

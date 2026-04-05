@@ -8,6 +8,7 @@ import 'package:hive/hive.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/pages/habit_import_page.dart';
+import 'package:home_widget_counter/pages/settings_page.dart';
 import 'package:home_widget_counter/pages/todo_home_page.dart';
 import 'package:home_widget_counter/presentation/custom_quotes.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
@@ -68,6 +69,7 @@ class _QuoteHomePageState extends State<QuoteHomePage>
   List<String> selectedTagNames = [];
   Timer? _wallpaperChangeTimer;
   bool isApiEnable = true;
+  bool wallpaperEnabled = false;
 
   @override
   void initState() {
@@ -94,8 +96,11 @@ class _QuoteHomePageState extends State<QuoteHomePage>
 
   Future<void> _initializeApiSettings() async {
     isApiEnable = await SettingsHelper.isApiQuotesEnabled();
-    if (isApiEnable) {
+    wallpaperEnabled = await SettingsHelper.isWallpaperEnabled();
+    if (wallpaperEnabled) {
       _startWallpaperChangeTimer();
+    } else {
+      _wallpaperChangeTimer?.cancel();
     }
     setState(() {});
   }
@@ -104,6 +109,10 @@ class _QuoteHomePageState extends State<QuoteHomePage>
     _wallpaperChangeTimer =
         Timer.periodic(const Duration(minutes: 1), (_) async {
       if (isApiEnable) {
+        final isWallpaperAllowed = await SettingsHelper.isWallpaperEnabled();
+        if (!isWallpaperAllowed) {
+          return;
+        }
         final quoteProvider =
             Provider.of<QuoteProvider>(context, listen: false);
         await quoteProvider.fetchQuote();
@@ -506,6 +515,17 @@ class _QuoteHomePageState extends State<QuoteHomePage>
         title: Text(widget.title),
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.checklist),
             onPressed: () {
               Navigator.push(
@@ -653,7 +673,10 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                 const SizedBox(height: 15),
                 GestureDetector(
                   onTap: () async {
-                    if (isApiEnable && quoteProvider.currentQuote.isNotEmpty) {
+                    final isWallpaperAllowed =
+                        await SettingsHelper.isWallpaperEnabled();
+                    if (isWallpaperAllowed &&
+                        quoteProvider.currentQuote.isNotEmpty) {
                       await _setLiveWallpaper(
                           quoteProvider.currentQuote.split('*').first);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -667,7 +690,9 @@ class _QuoteHomePageState extends State<QuoteHomePage>
                         const SnackBar(
                           backgroundColor: Colors.red,
                           content:
-                              Text('Failed: Enable API or no quotes available'),
+                              Text(
+                                'Wallpaper change is disabled or no quotes are available',
+                              ),
                         ),
                       );
                     }
