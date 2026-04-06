@@ -13,27 +13,25 @@ class HabitService {
       final response = await http.get(Uri.parse(_habitsUrl));
 
       if (response.statusCode != 200) {
-        throw Exception(
-          'Failed to load habits. Status code: ${response.statusCode}',
-        );
+        throw Exception('Failed to load habits');
       }
 
       final decoded = json.decode(response.body);
       if (decoded is! Map<String, dynamic>) {
-        throw Exception('Invalid habits response format.');
+        throw Exception('Failed to load habits');
       }
 
       final habitsJson = decoded['habits'];
       if (habitsJson is! List) {
-        throw Exception('Habits list not found in response.');
+        throw Exception('Failed to load habits');
       }
 
       return habitsJson
           .whereType<Map<String, dynamic>>()
           .map(Habit.fromJson)
           .toList();
-    } catch (e) {
-      throw Exception('Unable to fetch habits: $e');
+    } catch (_) {
+      throw Exception('Failed to load habits');
     }
   }
 }

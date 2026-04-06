@@ -64,7 +64,8 @@ class _HabitImportPageState extends State<HabitImportPage> {
       });
     } catch (e) {
       setState(() {
-        errorMessage = e.toString();
+        errorMessage =
+            'Failed to load habits. Please check your internet connection.';
         isLoading = false;
       });
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../helper/todo_scheduler.dart';
 import '../models/quote_model.dart';
 import '../models/tag_settings_model.dart';
 import '../models/todo_model.dart';
@@ -64,6 +65,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     settings.scheduledTime = _formatTime(selectedTime);
     await _tagSettingsBox.put(settings.tagName, settings);
+    await scheduleTagTask(settings.tagName, settings.scheduledTime!);
   }
 
   TimeOfDay _parseInitialTime(String? value) {

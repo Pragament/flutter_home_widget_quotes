@@ -7,6 +7,7 @@ import 'notifications_helper.dart';
 import '../models/todo_model.dart';
 
 const String todoTaskName = 'habitTask';
+const String tagTaskName = 'tagTask';
 
 @pragma('vm:entry-point')
 void todoWorkmanagerDispatcher() {
@@ -15,10 +16,22 @@ void todoWorkmanagerDispatcher() {
     await NotificationsHelper.initialize();
 
     final taskId = inputData?['taskId']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
+    final tagName = inputData?['tag']?.toString() ?? 'Habit';
     final title = inputData?['title']?.toString() ?? 'Unknown Todo';
-    final tagName = inputData?['tagName']?.toString() ?? 'Habit';
     final description = inputData?['description']?.toString() ?? '';
     final notificationBody = description.isNotEmpty ? description : title;
+    if (task == tagTaskName) {
+      print('Workmanager tag callback started for $tagName');
+      await NotificationsHelper.showNotification(
+        notificationId: taskId.hashCode,
+        title: 'New $tagName Quote',
+        body: 'Your scheduled quote reminder is ready.',
+      );
+      print('Notification shown for tag $tagName');
+      debugPrint('Tag task triggered for $tagName');
+      return Future.value(true);
+    }
+
     print('Workmanager callback started for $title');
     await NotificationsHelper.showNotification(
       notificationId: taskId.hashCode,
@@ -83,4 +96,20 @@ Future<void> scheduleTask({
 
 Future<void> cancelTask(String taskId) async {
   await Workmanager().cancelByUniqueName(_taskUniqueName(taskId));
+}
+
+Future<void> scheduleTagTask(String tagName, String time) async {
+  final taskId = 'tag_$tagName';
+
+  await Workmanager().cancelByUniqueName(taskId);
+  await Workmanager().registerOneOffTask(
+    taskId,
+    tagTaskName,
+    initialDelay: _delayUntilNextRun(time),
+    inputData: {
+      'taskId': taskId,
+      'tag': tagName,
+      'scheduledTime': time,
+    },
+  );
 }
