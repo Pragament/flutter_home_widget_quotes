@@ -1,4 +1,4 @@
-import 'dart:io';
+  import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
@@ -36,6 +36,8 @@ Future<void> main() async {
     todoWorkmanagerDispatcher,
     isInDebugMode: false,
   );
+  await syncTodoSchedules();
+  await syncTagSchedules();
 
   await SharedPreferences.getInstance();
   NativeBridge.registerMethods();

@@ -9,7 +9,7 @@ class DashWithSign extends StatelessWidget {
   final int count;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {  
     return FittedBox(
       child: SizedBox(
         width: 300,

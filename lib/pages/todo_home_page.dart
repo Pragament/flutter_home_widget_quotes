@@ -48,10 +48,9 @@ class _TodoHomePageState extends State<TodoHomePage> {
       return;
     }
 
-    final taskId = box.keyAt(index).toString();
     todo.scheduledTime = _formatTime(selectedTime);
     await box.putAt(index, todo);
-    await scheduleTask(taskId: taskId, todo: todo);
+    await syncTodoSchedules();
 
     if (!mounted) {
       return;
@@ -89,9 +88,8 @@ class _TodoHomePageState extends State<TodoHomePage> {
       return;
     }
 
-    final taskId = box.keyAt(index).toString();
-    await cancelTask(taskId);
     await box.deleteAt(index);
+    await syncTodoSchedules();
   }
 
   Widget _buildTodoDetails(Box<Todo> box, int index, Todo todo) {
