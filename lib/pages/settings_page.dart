@@ -313,7 +313,9 @@ class _SettingsPageState extends State<SettingsPage> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.white,
             ),
-            onPressed: hasUnsavedChanges && !_isSavingPendingChanges
+            onPressed: hasUnsavedChanges &&
+                    !_isSavingPendingChanges &&
+                    !_isApplyingBulkEdit
                 ? _savePendingChanges
                 : null,
             child: const Text('Save'),
@@ -405,7 +407,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                color: isSelected ? Colors.blue.shade50 : null,
+                color: isEditMode && isSelected ? Colors.blue.shade50 : null,
                 child: InkWell(
                   onTap: isEditMode ? () => _toggleTagSelection(tagId) : null,
                   child: Padding(

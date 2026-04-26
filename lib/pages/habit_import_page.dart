@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../helper/todo_box_helper.dart';
+import '../helper/habit_widget_helper.dart';
 import '../models/habit_model.dart';
 import '../models/todo_model.dart';
 import '../services/habit_service.dart';
@@ -100,17 +101,51 @@ class _HabitImportPageState extends State<HabitImportPage> {
     });
   }
 
+  TimeOfDay _defaultHabitTime() => const TimeOfDay(hour: 9, minute: 0);
+
+  TimeOfDay _parseHabitScheduleTime(String? value) {
+    if (value == null || !value.contains(':')) {
+      return _defaultHabitTime();
+    }
+    final parts = value.split(':');
+    if (parts.length != 2) {
+      return _defaultHabitTime();
+    }
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) {
+      return _defaultHabitTime();
+    }
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return _defaultHabitTime();
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
   Future<void> _importSelected(List<Habit> habits) async {
     final todoBox = await TodoBoxHelper.getTodoBox();
     final selectedHabits = selectedIndexes.map((index) => habits[index]).toList();
     final newTodos = selectedHabits
         .map(
-          (habit) => Todo(
-            title: habit.title,
-            description: habit.description,
-            category: habit.category,
-            tags: habit.tags,
-          ),
+          (habit) {
+            final scheduleTime = _parseHabitScheduleTime(habit.scheduleTime);
+            return Todo(
+              title: habit.title,
+              description: habit.description,
+              category: habit.category,
+              tags: habit.tags,
+              isRecurring: true,
+              scheduleTime: scheduleTime,
+              scheduledTime: _formatTime(scheduleTime),
+              repeatType: 'daily',
+            );
+          },
         )
         .toList();
 
@@ -126,6 +161,7 @@ class _HabitImportPageState extends State<HabitImportPage> {
     final duplicateCount = newTodos.length - todosToAdd.length;
 
     await todoBox.addAll(todosToAdd);
+    await refreshHabitWidget();
 
     setState(() {
       selectedIndexes.clear();

@@ -15,147 +15,96 @@ import '../models/todo_model.dart';
 import 'todo_box_helper.dart';
 import 'notifications_helper.dart';
 
-const String todoTaskName = 'habitTask';
 const String tagTaskName = 'tagTask';
 const String _todoScheduleRegistryKey = 'todoScheduleRegistryV1';
 const String _tagLastExecutionPrefix = 'tagTaskLastExecutionV1_';
 
 String _normalizeTagKey(String tagName) => tagName.trim().toLowerCase();
 
-Todo? _findTodoByTaskId(Box<Todo> box, String todoId) {
-  for (int index = 0; index < box.length; index++) {
-    final key = box.keyAt(index).toString();
-    if (key == todoId) {
-      return box.getAt(index);
-    }
-  }
-  return null;
-}
-
 @pragma('vm:entry-point')
 void todoWorkmanagerDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    DartPluginRegistrant.ensureInitialized();
-    await NotificationsHelper.initialize();
-    final tagSettingsBox = await _getTagSettingsBox();
-    final tagSettingsCache = <String, TagSettingsModel>{};
+    try {
+      DartPluginRegistrant.ensureInitialized();
+      await NotificationsHelper.initialize();
+      final tagSettingsBox = await _getTagSettingsBox();
+      final tagSettingsCache = <String, TagSettingsModel>{};
 
-    final taskId = inputData?['taskId']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
-    final tagName =
-        inputData?['tagId']?.toString() ??
-        inputData?['tag']?.toString() ??
-        'Habit';
-    final title = inputData?['title']?.toString() ?? 'Unknown Todo';
-    if (task == tagTaskName) {
-      final settings = _effectiveTagSettings(tagSettingsBox, tagName, cache: tagSettingsCache);
-      final scheduledHour = _parseInt(inputData?['scheduledHour']) ??
-          int.tryParse((settings.scheduledTime ?? '').split(':').first);
-      final scheduledMinute = _parseInt(inputData?['scheduledMinute']) ??
-          (() {
-            final parts = (settings.scheduledTime ?? '').split(':');
-            if (parts.length != 2) return null;
-            return int.tryParse(parts[1]);
-          })();
-
-      final notificationEnabled =
-          _parseBool(inputData?['notificationEnabled']) ?? settings.notificationEnabled;
-      final wallpaperEnabled =
-          _parseBool(inputData?['wallpaperEnabled']) ?? settings.wallpaperEnabled;
-
-      if (scheduledHour == null ||
-          scheduledMinute == null ||
-          !_isWithinValidQuarterHourWindow(
-            scheduledHour: scheduledHour,
-            scheduledMinute: scheduledMinute,
-          )) {
-        debugPrint('Skipping tag task for $tagName due to non-matching time window');
-        return Future.value(true);
-      }
-
-      final alreadyExecutedToday = await _hasTagExecutedToday(tagName);
-      if (alreadyExecutedToday) {
-        debugPrint('Skipping tag task for $tagName because it already ran today');
-        return Future.value(true);
-      }
-
-      print('Workmanager tag callback started for $tagName');
-      if (notificationEnabled) {
-        await NotificationsHelper.showNotification(
-          notificationId: taskId.hashCode,
-          title: 'New $tagName Quote',
-          body: 'Your scheduled quote reminder is ready.',
+      final taskId =
+          inputData?['taskId']?.toString() ??
+          DateTime.now().millisecondsSinceEpoch.toString();
+      final tagName =
+          inputData?['tagId']?.toString() ??
+          inputData?['tag']?.toString() ??
+          'Habit';
+      if (task == tagTaskName) {
+        final settings = _effectiveTagSettings(
+          tagSettingsBox,
+          tagName,
+          cache: tagSettingsCache,
         );
-        print('Notification shown for tag $tagName');
-      } else {
-        debugPrint('Skipping tag notification for $tagName because notification is disabled');
+        final scheduledHour =
+            _parseInt(inputData?['scheduledHour']) ??
+            int.tryParse((settings.scheduledTime ?? '').split(':').first);
+        final scheduledMinute =
+            _parseInt(inputData?['scheduledMinute']) ??
+            (() {
+              final parts = (settings.scheduledTime ?? '').split(':');
+              if (parts.length != 2) return null;
+              return int.tryParse(parts[1]);
+            })();
+
+        final notificationEnabled =
+            _parseBool(inputData?['notificationEnabled']) ??
+            settings.notificationEnabled;
+        final wallpaperEnabled =
+            _parseBool(inputData?['wallpaperEnabled']) ??
+            settings.wallpaperEnabled;
+
+        if (scheduledHour == null ||
+            scheduledMinute == null ||
+            !_isWithinValidQuarterHourWindow(
+              scheduledHour: scheduledHour,
+              scheduledMinute: scheduledMinute,
+            )) {
+          debugPrint('Skipping tag task for $tagName due to non-matching time window');
+          return Future.value(true);
+        }
+
+        final alreadyExecutedToday = await _hasTagExecutedToday(tagName);
+        if (alreadyExecutedToday) {
+          debugPrint('Skipping tag task for $tagName because it already ran today');
+          return Future.value(true);
+        }
+
+        print('Workmanager tag callback started for $tagName');
+        if (notificationEnabled) {
+          await NotificationsHelper.showNotification(
+            notificationId: taskId.hashCode,
+            title: 'New $tagName Quote',
+            body: 'Your scheduled quote reminder is ready.',
+          );
+          print('Notification shown for tag $tagName');
+        } else {
+          debugPrint('Skipping tag notification for $tagName because notification is disabled');
+        }
+
+        if (wallpaperEnabled) {
+          await _applyScheduledWallpaperForTag(tagName);
+        }
+        await _markTagExecutedToday(tagName);
+
+        debugPrint('Tag task triggered for $tagName');
+        return Future.value(true);
       }
 
-      if (wallpaperEnabled) {
-        await _applyScheduledWallpaperForTag(tagName);
-      }
-      await _markTagExecutedToday(tagName);
-
-      debugPrint('Tag task triggered for $tagName');
+      debugPrint('Ignoring legacy non-tag task `$task` to keep scheduling periodic-per-tag only');
+      return Future.value(true);
+    } catch (error, stackTrace) {
+      debugPrint('Workmanager background task failed: $error');
+      debugPrint(stackTrace.toString());
       return Future.value(true);
     }
-
-    final todoId = inputData?['todoId']?.toString() ?? taskId;
-    final todosBox = await TodoBoxHelper.getTodoBox();
-    final liveTodo = _findTodoByTaskId(todosBox, todoId);
-    if (liveTodo == null) {
-      debugPrint('Skipping todo execution for $todoId because it no longer exists');
-      return Future.value(true);
-    }
-
-    final todoTagName = liveTodo.tags.isNotEmpty
-        ? liveTodo.tags.first
-        : inputData?['tagName']?.toString() ?? inputData?['tag']?.toString() ?? 'Habit';
-    final normalizedTodoTime = _normalizeTimeString(liveTodo.scheduledTime);
-    if (normalizedTodoTime == null) {
-      debugPrint('Skipping todo execution for $todoId because scheduled time is missing/invalid');
-      return Future.value(true);
-    }
-
-    final nextUniqueName =
-        inputData?['uniqueName']?.toString() ?? _taskUniqueName(todoId, normalizedTodoTime);
-    final todoTagSettings = _effectiveTagSettings(
-      tagSettingsBox,
-      todoTagName,
-      cache: tagSettingsCache,
-    );
-    final isNotificationEnabled = todoTagSettings.notificationEnabled;
-    final isWallpaperEnabled = todoTagSettings.wallpaperEnabled;
-    if (!isNotificationEnabled && isWallpaperEnabled) {
-      debugPrint(
-        'Todo task for $todoTagName skipped notification scheduling: wallpaper is enabled but notification is disabled',
-      );
-    }
-
-    print('Workmanager callback started for $title');
-    if (isNotificationEnabled) {
-      await NotificationsHelper.showNotification(
-        notificationId: '$todoId-$normalizedTodoTime'.hashCode,
-        title: 'New $todoTagName Quote',
-        body: liveTodo.description.isNotEmpty ? liveTodo.description : liveTodo.title,
-      );
-    } else {
-      debugPrint('Skipping todo notification for $todoTagName because notification is disabled');
-    }
-
-    if (isNotificationEnabled) {
-      await _registerOneOffDailyTodo(
-        uniqueName: nextUniqueName,
-        todoId: todoId,
-        title: liveTodo.title,
-        description: liveTodo.description,
-        tagName: todoTagName,
-        scheduledTime: normalizedTodoTime,
-      );
-    }
-
-    print('Notification shown for $title');
-    debugPrint('Task triggered for $title');
-    return Future.value(true);
   });
 }
 
@@ -222,32 +171,6 @@ String? _normalizeTimeString(String? scheduledTime) {
     return null;
   }
   return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
-}
-
-Duration _delayUntilNextRun(String scheduledTime) {
-  final normalized = _normalizeTimeString(scheduledTime);
-  if (normalized == null) {
-    return const Duration(days: 1);
-  }
-
-  final parts = normalized.split(':');
-  final hour = int.parse(parts[0]);
-  final minute = int.parse(parts[1]);
-
-  final now = DateTime.now();
-  DateTime scheduledDateTime = DateTime(
-    now.year,
-    now.month,
-    now.day,
-    hour,
-    minute,
-  );
-
-  if (!scheduledDateTime.isAfter(now)) {
-    scheduledDateTime = scheduledDateTime.add(const Duration(days: 1));
-  }
-
-  return scheduledDateTime.difference(now);
 }
 
 Future<Box<TagSettingsModel>> _getTagSettingsBox() async {
@@ -374,37 +297,10 @@ Future<void> _writeScheduleRegistry(Map<String, String> registry) async {
   await prefs.setStringList(_todoScheduleRegistryKey, list);
 }
 
-Future<void> _registerOneOffDailyTodo({
-  required String uniqueName,
-  required String todoId,
-  required String title,
-  required String description,
-  required String tagName,
-  required String scheduledTime,
-}) async {
-  await Workmanager().cancelByUniqueName(uniqueName);
-  await Workmanager().registerOneOffTask(
-    uniqueName,
-    todoTaskName,
-    initialDelay: _delayUntilNextRun(scheduledTime),
-    inputData: {
-      'taskId': todoId,
-      'todoId': todoId,
-      'title': title,
-      'description': description,
-      'tagName': tagName,
-      'scheduledTime': scheduledTime,
-      'uniqueName': uniqueName,
-    },
-  );
-}
-
 Future<void> syncTodoSchedules() async {
   final todoBox = await TodoBoxHelper.getTodoBox();
-  final tagSettingsBox = await _getTagSettingsBox();
   final registry = await _readScheduleRegistry();
   final liveTodoIds = <String>{};
-  final tagSettingsCache = <String, TagSettingsModel>{};
 
   for (int index = 0; index < todoBox.length; index++) {
     final todo = todoBox.getAt(index);
@@ -416,43 +312,13 @@ Future<void> syncTodoSchedules() async {
     liveTodoIds.add(todoId);
     await Workmanager().cancelByUniqueName(_legacyTaskUniqueName(todoId));
     final normalizedTime = _normalizeTimeString(todo.scheduledTime);
-    final previousUniqueName = registry[todoId];
-    final todoTagName = todo.tags.isNotEmpty ? todo.tags.first.trim() : '';
-    final tagSettings = tagSettingsCache.putIfAbsent(
-      _normalizeTagKey(todoTagName),
-      () => _effectiveTagSettings(tagSettingsBox, todoTagName, cache: tagSettingsCache),
-    );
-    final canScheduleNotification = tagSettings.notificationEnabled;
-    final canScheduleWallpaper = tagSettings.wallpaperEnabled;
-    if (!canScheduleNotification && canScheduleWallpaper) {
-      debugPrint(
-        'Todo $todoId is not scheduled because notification is disabled for tag $todoTagName',
-      );
+    if (normalizedTime != null) {
+      await Workmanager().cancelByUniqueName(_taskUniqueName(todoId, normalizedTime));
     }
-    final canSchedule = canScheduleNotification;
-
-    if (normalizedTime == null || !canSchedule) {
-      if (previousUniqueName != null) {
-        await Workmanager().cancelByUniqueName(previousUniqueName);
-        registry.remove(todoId);
-      }
-      continue;
-    }
-
-    final uniqueName = _taskUniqueName(todoId, normalizedTime);
-    if (previousUniqueName != null && previousUniqueName != uniqueName) {
+    final previousUniqueName = registry.remove(todoId);
+    if (previousUniqueName != null) {
       await Workmanager().cancelByUniqueName(previousUniqueName);
     }
-
-    await _registerOneOffDailyTodo(
-      uniqueName: uniqueName,
-      todoId: todoId,
-      title: todo.title,
-      description: todo.description,
-      tagName: todo.tags.isNotEmpty ? todo.tags.first.trim() : 'Habit',
-      scheduledTime: normalizedTime,
-    );
-    registry[todoId] = uniqueName;
   }
 
   final staleTodoIds = registry.keys.where((id) => !liveTodoIds.contains(id)).toList();
@@ -464,7 +330,12 @@ Future<void> syncTodoSchedules() async {
     registry.remove(staleTodoId);
   }
 
-  await _writeScheduleRegistry(registry);
+  if (registry.isNotEmpty) {
+    for (final uniqueName in registry.values) {
+      await Workmanager().cancelByUniqueName(uniqueName);
+    }
+  }
+  await _writeScheduleRegistry(<String, String>{});
 }
 
 Future<void> scheduleTagTask(String tagName, String _) async {
@@ -494,36 +365,41 @@ Future<void> _syncSingleTagSchedule({
   required String tagName,
   required TagSettingsModel settings,
 }) async {
-  final uniqueName = _tagTaskUniqueName(tagName);
-  final legacyUniqueName = _legacyTagTaskUniqueName(tagName);
-  final normalizedTime = _normalizeTimeString(settings.scheduledTime);
-  final canSchedule = settings.notificationEnabled || settings.wallpaperEnabled;
+  try {
+    final uniqueName = _tagTaskUniqueName(tagName);
+    final legacyUniqueName = _legacyTagTaskUniqueName(tagName);
+    final normalizedTime = _normalizeTimeString(settings.scheduledTime);
+    final canSchedule = settings.notificationEnabled || settings.wallpaperEnabled;
 
-  await Workmanager().cancelByUniqueName(uniqueName);
-  await Workmanager().cancelByUniqueName(legacyUniqueName);
+    await Workmanager().cancelByUniqueName(uniqueName);
+    await Workmanager().cancelByUniqueName(legacyUniqueName);
 
-  if (normalizedTime == null || !canSchedule) {
-    return;
+    if (normalizedTime == null || !canSchedule) {
+      return;
+    }
+
+    final parts = normalizedTime.split(':');
+    final scheduledHour = int.parse(parts[0]);
+    final scheduledMinute = int.parse(parts[1]);
+
+    await Workmanager().registerPeriodicTask(
+      uniqueName,
+      tagTaskName,
+      frequency: const Duration(minutes: 15),
+      inputData: {
+        'taskId': uniqueName,
+        'tagId': tagName,
+        'tag': tagName,
+        'scheduledHour': scheduledHour,
+        'scheduledMinute': scheduledMinute,
+        'notificationEnabled': settings.notificationEnabled,
+        'wallpaperEnabled': settings.wallpaperEnabled,
+      },
+    );
+  } catch (error, stackTrace) {
+    debugPrint('Failed syncing periodic tag task for $tagName: $error');
+    debugPrint(stackTrace.toString());
   }
-
-  final parts = normalizedTime.split(':');
-  final scheduledHour = int.parse(parts[0]);
-  final scheduledMinute = int.parse(parts[1]);
-
-  await Workmanager().registerPeriodicTask(
-    uniqueName,
-    tagTaskName,
-    frequency: const Duration(minutes: 15),
-    inputData: {
-      'taskId': uniqueName,
-      'tagId': tagName,
-      'tag': tagName,
-      'scheduledHour': scheduledHour,
-      'scheduledMinute': scheduledMinute,
-      'notificationEnabled': settings.notificationEnabled,
-      'wallpaperEnabled': settings.wallpaperEnabled,
-    },
-  );
 }
 
 String _tagTaskUniqueName(String tagName) => 'tag_${tagName}_task';

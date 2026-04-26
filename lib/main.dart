@@ -4,6 +4,7 @@ import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/dash_with_sign.dart';
 import 'package:home_widget_counter/helper/notifications_helper.dart';
+import 'package:home_widget_counter/helper/habit_widget_helper.dart';
 import 'package:home_widget_counter/helper/todo_scheduler.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
 import 'package:home_widget_counter/models/tag_settings_model.dart';
@@ -47,6 +48,7 @@ Future<void> main() async {
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
   // Register an Interactivity Callback. It is necessary that this method is static and public
   await HomeWidget.registerInteractivityCallback(interactiveCallback);
+  await refreshHabitWidget();
   runApp(const MyApp());
 }
 

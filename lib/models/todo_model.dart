@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 part 'todo_model.g.dart';
@@ -22,6 +23,18 @@ class Todo {
   @HiveField(5)
   String? scheduledTime;
 
+  @HiveField(6)
+  bool isRecurring;
+
+  @HiveField(7)
+  TimeOfDay? scheduleTime;
+
+  @HiveField(8)
+  String repeatType;
+
+  @HiveField(9)
+  String? lastCompletedDate;
+
   Todo({
     required this.title,
     required this.description,
@@ -29,5 +42,9 @@ class Todo {
     required this.tags,
     this.isCompleted = false,
     this.scheduledTime,
+    this.isRecurring = false,
+    this.scheduleTime,
+    this.repeatType = 'daily',
+    this.lastCompletedDate,
   });
 }

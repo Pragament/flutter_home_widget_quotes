@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../helper/todo_box_helper.dart';
+import '../helper/habit_widget_helper.dart';
 import '../helper/todo_scheduler.dart';
 import '../models/todo_model.dart';
 
@@ -38,6 +39,21 @@ class _TodoHomePageState extends State<TodoHomePage> {
     return '$hour:$minute';
   }
 
+  String _todayDateKey() {
+    final now = DateTime.now();
+    final year = now.year.toString().padLeft(4, '0');
+    final month = now.month.toString().padLeft(2, '0');
+    final day = now.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
+  bool _isCompletedForDisplay(Todo todo) {
+    if (!todo.isRecurring) {
+      return todo.isCompleted;
+    }
+    return todo.lastCompletedDate == _todayDateKey();
+  }
+
   Future<void> _pickScheduleTime(Box<Todo> box, int index, Todo todo) async {
     final selectedTime = await showTimePicker(
       context: context,
@@ -49,8 +65,10 @@ class _TodoHomePageState extends State<TodoHomePage> {
     }
 
     todo.scheduledTime = _formatTime(selectedTime);
+    todo.scheduleTime = selectedTime;
     await box.putAt(index, todo);
     await syncTodoSchedules();
+    await refreshHabitWidget();
 
     if (!mounted) {
       return;
@@ -90,9 +108,11 @@ class _TodoHomePageState extends State<TodoHomePage> {
 
     await box.deleteAt(index);
     await syncTodoSchedules();
+    await refreshHabitWidget();
   }
 
   Widget _buildTodoDetails(Box<Todo> box, int index, Todo todo) {
+    final isCompletedForDisplay = _isCompletedForDisplay(todo);
     final tagsText = todo.tags.isEmpty ? 'No tags' : todo.tags.join(', ');
     final scheduleText = todo.scheduledTime == null || todo.scheduledTime!.isEmpty
         ? 'Not set'
@@ -109,10 +129,16 @@ class _TodoHomePageState extends State<TodoHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Checkbox(
-                  value: todo.isCompleted,
+                  value: isCompletedForDisplay,
                   onChanged: (value) async {
-                    todo.isCompleted = value ?? false;
+                    final checked = value ?? false;
+                    if (todo.isRecurring) {
+                      todo.lastCompletedDate = checked ? _todayDateKey() : null;
+                    } else {
+                      todo.isCompleted = checked;
+                    }
                     await box.putAt(index, todo);
+                    await refreshHabitWidget();
                   },
                 ),
                 Expanded(
@@ -138,6 +164,10 @@ class _TodoHomePageState extends State<TodoHomePage> {
                       Text('Tags: $tagsText'),
                       const SizedBox(height: 4),
                       Text('Time: $scheduleText'),
+                      if (todo.isRecurring) ...[
+                        const SizedBox(height: 4),
+                        Text('Repeat: ${todo.repeatType}'),
+                      ],
                     ],
                   ),
                 ),
