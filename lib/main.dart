@@ -1,35 +1,54 @@
-import 'dart:io';
+  import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:home_widget_counter/dash_with_sign.dart';
+import 'package:home_widget_counter/helper/notifications_helper.dart';
+import 'package:home_widget_counter/helper/habit_widget_helper.dart';
+import 'package:home_widget_counter/helper/todo_scheduler.dart';
 import 'package:home_widget_counter/models/tag_model.dart';
+import 'package:home_widget_counter/models/tag_settings_model.dart';
+import 'package:home_widget_counter/models/todo_model.dart';
 import 'package:home_widget_counter/provider/quotes_provider.dart';
 import 'package:home_widget_counter/provider/tag_provider.dart';
 import 'package:home_widget_counter/quote_home_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'helper/native_bridge.dart';
 import 'models/quote_model.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   // Hive Database
   await Hive.initFlutter();
   Hive.registerAdapter(QuoteModelAdapter());
   Hive.registerAdapter(TagModelAdapter());
+  Hive.registerAdapter(TagSettingsModelAdapter());
+  Hive.registerAdapter(TodoAdapter());
   await Hive.openBox<QuoteModel>('quotesBox');
   await Hive.openBox<TagModel>('tagsBox');
+  await Hive.openBox<TagSettingsModel>('tagSettingsBox');
+  await Hive.openBox<Todo>('todos');
+  await NotificationsHelper.initialize(requestPermission: true);
+  await Workmanager().initialize(
+    todoWorkmanagerDispatcher,
+    isInDebugMode: false,
+  );
+  await syncTodoSchedules();
+  await syncTagSchedules();
 
   await SharedPreferences.getInstance();
   NativeBridge.registerMethods();
 
-  WidgetsFlutterBinding.ensureInitialized();
   // Set AppGroup Id. This is needed for iOS Apps to talk to their WidgetExtensions
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
   await HomeWidget.setAppGroupId('group.es.antonborri.homeWidgetCounter');
   // Register an Interactivity Callback. It is necessary that this method is static and public
   await HomeWidget.registerInteractivityCallback(interactiveCallback);
+  await refreshHabitWidget();
   runApp(const MyApp());
 }
 

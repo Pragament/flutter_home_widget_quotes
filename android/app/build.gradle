@@ -1,6 +1,7 @@
 plugins {
     id "com.android.application"
     id "kotlin-android"
+    id "org.jetbrains.kotlin.plugin.compose"
     id "dev.flutter.flutter-gradle-plugin"
 }
 
@@ -25,16 +26,18 @@ if (flutterVersionName == null) {
 android {
     namespace "es.antonborri.home_widget_counter"
     compileSdkVersion 35
-    ndkVersion = "25.1.8937393"
+    ndkVersion = "27.0.12077973"
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
+compileOptions {
+    coreLibraryDesugaringEnabled true
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+}
 
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
+kotlinOptions {
+    jvmTarget = '17'
+}
+
 
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
@@ -42,7 +45,7 @@ android {
 
     defaultConfig {
         applicationId "es.antonborri.home_widget_counter"
-        minSdkVersion 23
+        minSdkVersion flutter.minSdkVersion
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -51,10 +54,6 @@ android {
     buildFeatures {
         compose true
         viewBinding true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
     }
 
     buildTypes {
@@ -70,6 +69,7 @@ flutter {
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
     implementation 'androidx.glance:glance-appwidget:1.0.0'
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation "androidx.preference:preference-ktx:1.2.0"
